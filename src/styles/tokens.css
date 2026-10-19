@@ -1,0 +1,77 @@
+/* ============ 1) LIVE DARK (por defecto) ============ */
+:root,
+:root[data-theme='live-dark'] {
+  color-scheme: dark;
+  --bg-app: #1b1b1b;
+  --bg-panel: #262626;
+  --bg-raised: #313131;
+  --bg-inset: #141414;
+  --border: #0d0d0d;
+  --border-soft: #3b3b3b;
+  --text: #d9d9d9;
+  --text-dim: #8c8c8c;
+  --accent: #ff7a2f;
+  --on-accent: #111;
+  --play: #7bd96b;
+  --meter-ok: #3fc15a;
+  --meter-warn: #e9cf45;
+  --meter-hot: #ff4b3a;
+  --thumb-a: #5a5a5a;
+  --thumb-b: #3a3a3a;
+  --lane-bg: #1f1f1f;
+  --playhead: #ffffff;
+  --track-0: #ff7a59; --track-1: #f5c542; --track-2: #8bd450; --track-3: #37c6a3;
+  --track-4: #45b3ff; --track-5: #8c7bff; --track-6: #e26bd0; --track-7: #ff6b8b;
+}
+
+/* ============ 2) LIVE LIGHT ============ */
+:root[data-theme='live-light'] {
+  color-scheme: light;
+  --bg-app: #b9b9b9;
+  --bg-panel: #cfcfcf;
+  --bg-raised: #dedede;
+  --bg-inset: #a8a8a8;
+  --border: #8b8b8b;
+  --border-soft: #e8e8e8;
+  --text: #1a1a1a;
+  --text-dim: #565656;
+  --accent: #ff6a1a;
+  --on-accent: #111;
+  --play: #2e9f3e;
+  --meter-ok: #2e9f3e;
+  --meter-warn: #d6a900;
+  --meter-hot: #e03a2a;
+  --thumb-a: #f1f1f1;
+  --thumb-b: #c4c4c4;
+  --lane-bg: #c3c3c3;
+  --playhead: #111111;
+  --track-0: #e0502d; --track-1: #c99a00; --track-2: #5b9e1d; --track-3: #0f9b7a;
+  --track-4: #1b7fd1; --track-5: #5c49d6; --track-6: #b9399f; --track-7: #d63b62;
+}
+
+/* ============ 3) LIVE NEON ============ */
+:root[data-theme='live-neon'] {
+  color-scheme: dark;
+  --bg-app: #080b16;
+  --bg-panel: #0f1426;
+  --bg-raised: #171d36;
+  --bg-inset: #05070f;
+  --border: #02030a;
+  --border-soft: #26305a;
+  --text: #dfe8ff;
+  --text-dim: #7b88b8;
+  --accent: #00e5ff;
+  --on-accent: #001418;
+  --play: #39ff88;
+  --meter-ok: #00e5a8;
+  --meter-warn: #ffe14d;
+  --meter-hot: #ff2bd6;
+  --thumb-a: #3a4580;
+  --thumb-b: #1f2650;
+  --lane-bg: #0b1022;
+  --playhead: #ff2bd6;
+  --track-0: #ff2bd6; --track-1: #ffe14d; --track-2: #39ff88; --track-3: #00e5ff;
+  --track-4: #4d8bff; --track-5: #a56bff; --track-6: #ff6b9d; --track-7: #ff9d3d;
+}
+
+:root { --lane-h: 88px; --mixer-h: clamp(250px, 36dvh, 340px); }
