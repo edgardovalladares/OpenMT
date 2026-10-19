@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useDaw, type ThemeId } from '../store/useDaw';
+import { Undo2, Redo2, Clock as ClockIcon } from 'lucide-react';
+import { useDaw } from '../store/useDaw';
 import { engine } from '../audio/engine';
 import { subscribeFrame } from '../audio/frameLoop';
 import { formatTime } from '../audio/music';
@@ -18,55 +19,131 @@ function Clock() {
   return <span className="readout" ref={ref}>0:00.0 / 0:00.0</span>;
 }
 
-const THEMES: { id: ThemeId; label: string }[] = [
-  { id: 'live-dark', label: 'Dark' },
-  { id: 'live-light', label: 'Light' },
-  { id: 'live-neon', label: 'Neon' },
-];
-
-export function TopBar({ narrow }: { narrow: boolean }) {
+export function TopBar() {
   const playing = useDaw((s) => s.transport === 'playing');
   const hasTracks = useDaw((s) => s.tracks.length > 0);
+  const addFiles = useDaw((s) => s.addFiles);
+
+  const canUndo = useDaw((s) => s.canUndo);
+  const canRedo = useDaw((s) => s.canRedo);
+  const undo = useDaw((s) => s.undo);
+  const redo = useDaw((s) => s.redo);
+
   const theme = useDaw((s) => s.theme);
-  const mixerPosition = useDaw((s) => s.mixerPosition);
-  const { addFiles, setTheme, setMixerPosition } = useDaw.getState();
+  const queuedSectionId = useDaw((s) => s.queuedSectionId);
+  const sections = useDaw((s) => s.sections);
+  const queueSection = useDaw((s) => s.queueSection);
+  const queuedSec = sections.find((sec) => sec.id === queuedSectionId);
 
   return (
     <header className="topbar">
+      <div className="topbar__brand" title="OpenMT">
+        <img
+          src={theme === 'live-light' ? '/images/logo-light.png' : '/images/logo-dark.png'}
+          alt="Logo"
+          className="topbar__logo-img"
+        />
+      </div>
+
       <section className="panel panel--transport" aria-label="Transporte">
         <span className="panel__label">TRANSPORTE</span>
         <div className="row">
-          <label className="btn" title="Abrir audio" aria-label="Abrir audio">
+          <label className="btn" title="Abrir / importar audio" aria-label="Abrir audio">
             <IconOpen />
-            <input type="file" hidden multiple accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.opus"
-              onChange={(e) => { void addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
+            <input
+              type="file"
+              hidden
+              multiple
+              accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.opus"
+              onChange={(e) => {
+                void addFiles(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
           </label>
-          <button className="btn btn--play" aria-pressed={playing} disabled={!hasTracks}
-            onClick={() => void engine.toggle()} aria-label={playing ? 'Pausa' : 'Reproducir'} title="Espacio">
+          <button
+            className="btn btn--play"
+            aria-pressed={playing}
+            disabled={!hasTracks}
+            onClick={() => void engine.toggle()}
+            aria-label={playing ? 'Pausa' : 'Reproducir'}
+            title="Espacio para Reproducir/Pausar"
+          >
             {playing ? <IconPause /> : <IconPlay />}
           </button>
-          <button className="btn" disabled={!hasTracks} onClick={() => engine.stop()} aria-label="Detener"><IconStop /></button>
+          <button
+            className="btn"
+            disabled={!hasTracks}
+            onClick={() => engine.stop()}
+            aria-label="Detener"
+            title="Detener"
+          >
+            <IconStop />
+          </button>
           <Clock />
+        </div>
+      </section>
+
+      {/* Historial Deshacer / Rehacer */}
+      <section className="panel" aria-label="Historial">
+        <span className="panel__label">HISTORIAL</span>
+        <div className="row">
+          <button
+            className="btn"
+            disabled={!canUndo}
+            onClick={() => undo()}
+            title="Deshacer última acción (Ctrl+Z)"
+            aria-label="Deshacer"
+          >
+            <Undo2 size={14} />
+            <span>Deshacer</span>
+          </button>
+          <button
+            className="btn"
+            disabled={!canRedo}
+            onClick={() => redo()}
+            title="Rehacer acción deshecha (Ctrl+Y)"
+            aria-label="Rehacer"
+          >
+            <Redo2 size={14} />
+            <span>Rehacer</span>
+          </button>
         </div>
       </section>
 
       <TempoPanel />
       <KeyPanel />
 
-      <section className="panel panel--view" aria-label="Vista">
-        <span className="panel__label">FADERS</span>
-        <div className="row" role="group" aria-label="Posición de los faders">
-          <button className="btn btn--tiny" aria-pressed={narrow || mixerPosition === 'bottom'} onClick={() => setMixerPosition('bottom')}>Abajo</button>
-          <button className="btn btn--tiny" aria-pressed={!narrow && mixerPosition === 'left'} disabled={narrow}
-            title={narrow ? 'Disponible en pantallas más anchas' : ''} onClick={() => setMixerPosition('left')}>Izquierda</button>
+      {/* Indicador visible cuando una sección está en cola para saltar */}
+      {queuedSec && (
+        <div className="topbar__queued-banner">
+          <span className="topbar__queued-pulse">
+            <ClockIcon size={12} style={{ verticalAlign: -1 }} />
+          </span>
+          <span>
+            En cola: <strong>{queuedSec.name}</strong> (esperando al final de la sección actual…)
+          </span>
+          <button
+            type="button"
+            className="btn btn--tiny btn--accent"
+            onClick={() => {
+              engine.seek(queuedSec.start);
+              useDaw.setState({ queuedSectionId: null, activeSectionId: queuedSec.id });
+            }}
+            title="Saltar a esta sección de inmediato sin esperar al final"
+          >
+            Saltar ahora
+          </button>
+          <button
+            type="button"
+            className="btn btn--tiny"
+            onClick={() => queueSection(null)}
+            title="Cancelar el salto en cola"
+          >
+            Cancelar
+          </button>
         </div>
-        <div className="row" role="group" aria-label="Tema">
-          {THEMES.map((t) => (
-            <button key={t.id} className={`swatch swatch--${t.id}`} aria-pressed={theme === t.id}
-              aria-label={`Tema ${t.label}`} title={t.label} onClick={() => setTheme(t.id)} />
-          ))}
-        </div>
-      </section>
+      )}
     </header>
   );
 }

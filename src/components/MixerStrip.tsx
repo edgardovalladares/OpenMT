@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react';
+import { useState, useRef, type CSSProperties } from 'react';
+import { AlertTriangle, Scissors, Lock, Unlock } from 'lucide-react';
 import { useDaw, type TrackState } from '../store/useDaw';
 import { engine } from '../audio/engine';
 import { formatDb, posToDb } from '../audio/dbMath';
@@ -6,25 +7,124 @@ import { keyName } from '../audio/music';
 import { Fader } from './Fader';
 import { Meter } from './Meter';
 import { Stepper } from './Stepper';
+import { ClipEditorModal } from './ClipEditorModal';
 
 export type Orientation = 'vertical' | 'horizontal';
 
 export function TrackInfo({ t }: { t: TrackState }) {
-  const { removeTrack, setRef } = useDaw.getState();
+  const { removeTrack, setRef, toggleMute, toggleSolo, toggleTrackPitchLock } = useDaw.getState();
+  const relinkTrack = useDaw((s) => s.relinkTrack);
   const isRef = useDaw((s) => s.refTrackId === t.id);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showClipModal, setShowClipModal] = useState(false);
+
   const data =
-    t.status === 'error' ? (t.error ?? 'Error')
-    : t.status === 'loading' ? 'cargando…'
-    : t.analysis === 'pending' ? 'analizando…'
+    t.status === 'missing' ? 'Falta archivo'
+    : t.status === 'error' ? (t.error ?? 'Error')
+    : t.status === 'loading' ? 'Cargando…'
+    : t.analysis === 'pending' ? 'Analizando…'
     : `${t.bpm ? t.bpm.toFixed(1) : '—'} BPM · ${t.key ? keyName(t.key) : '—'}`;
+
+  const hasClipEdits = t.trimStart > 0 || (t.trimEnd > 0 && t.trimEnd < t.duration) || t.fadeIn > 0 || t.fadeOut > 0;
+
   return (
-    <div className="info">
-      <span className="info__dot" />
-      <span className="info__name" title={t.name}>{t.name}</span>
-      <button className="chip" aria-pressed={isRef} onClick={() => setRef(t.id)} title="Usar como referencia de BPM y tonalidad">REF</button>
-      <span className="chip chip--data">{data}</span>
-      <button className="icon-btn" aria-label={`Quitar ${t.name}`} onClick={() => removeTrack(t.id)}>✕</button>
-    </div>
+    <>
+      <div className="info">
+        <div className="info__top">
+          <span className="info__dot" style={{ backgroundColor: `var(--track-${t.colorIndex})` }} />
+          <span className="info__name" title={t.name}>{t.name}</span>
+          <button
+            className="icon-btn info__close"
+            aria-label={`Quitar ${t.name}`}
+            title="Eliminar pista"
+            onClick={() => removeTrack(t.id)}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="info__bottom">
+          <button
+            className="chip info__ref"
+            aria-pressed={isRef}
+            onClick={() => setRef(t.id)}
+            title="Usar como referencia de BPM y tonalidad"
+          >
+            REF
+          </button>
+
+          <button
+            type="button"
+            className={`btn btn--tiny info__clip-btn ${hasClipEdits ? 'btn--accent' : ''}`}
+            onClick={() => setShowClipModal(true)}
+            title="Recorte y Desvanecimiento de clip (Fade In / Fade Out)"
+            aria-label="Editar recorte y desvanecimientos"
+          >
+            <Scissors size={11} />
+          </button>
+
+          <button
+            type="button"
+            className={`btn btn--tiny info__clip-btn ${t.pitchLocked ? 'btn--accent' : ''}`}
+            onClick={() => toggleTrackPitchLock(t.id)}
+            title={t.pitchLocked ? 'Tono bloqueado: esta pista ignora la transposición máster' : 'Bloquear tono: evitar cambios de tono máster en esta pista (batería/click/guía)'}
+            aria-label="Bloquear tono"
+          >
+            {t.pitchLocked ? <Lock size={11} /> : <Unlock size={11} style={{ opacity: 0.5 }} />}
+          </button>
+
+          {t.status === 'missing' ? (
+            <>
+              <button
+                type="button"
+                className="chip chip--warn"
+                title="Haz clic para reubicar archivo"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <AlertTriangle size={10} style={{ marginRight: 2, verticalAlign: -1 }} />
+                Reubicar
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
+                accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.opus"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void relinkTrack(t.id, file);
+                  e.target.value = '';
+                }}
+              />
+            </>
+          ) : (
+            <span className="chip chip--data" title={data}>{data}</span>
+          )}
+
+          <div className="info__ms">
+            <button
+              className="btn btn--m btn--tiny"
+              aria-pressed={t.mute}
+              onClick={() => toggleMute(t.id)}
+              title="Mute"
+            >
+              M
+            </button>
+            <button
+              className="btn btn--s btn--tiny"
+              aria-pressed={t.solo}
+              onClick={() => toggleSolo(t.id)}
+              title="Solo"
+            >
+              S
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showClipModal && (
+        <ClipEditorModal track={t} onClose={() => setShowClipModal(false)} />
+      )}
+    </>
   );
 }
 
@@ -57,7 +157,16 @@ export function MixerStrip({ id, orientation }: { id: string; orientation: Orien
       <Meter source={source} orientation={orientation} />
     </div>
   );
-  const stepper = <Stepper label={`Tono ${t.name}`} value={t.semitones} min={-12} max={12} unit=" st" onChange={(v) => setTrackSemitones(id, v)} />;
+  const stepper = (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+      <Stepper label={`Tono ${t.name}`} value={t.semitones} min={-12} max={12} unit=" st" onChange={(v) => setTrackSemitones(id, v)} />
+      {t.pitchLocked && (
+        <span title="Tono bloqueado: ignora la transposición máster" style={{ color: 'var(--accent)', display: 'inline-flex', padding: 2 }}>
+          <Lock size={11} />
+        </span>
+      )}
+    </div>
+  );
 
   if (orientation === 'horizontal') {
     return (

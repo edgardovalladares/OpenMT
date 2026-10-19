@@ -22,6 +22,9 @@
   --playhead: #ffffff;
   --track-0: #ff7a59; --track-1: #f5c542; --track-2: #8bd450; --track-3: #37c6a3;
   --track-4: #45b3ff; --track-5: #8c7bff; --track-6: #e26bd0; --track-7: #ff6b8b;
+  --track-8: #ff9f43; --track-9: #2ed573; --track-10: #1e90ff; --track-11: #a55eea;
+  --track-12: #ff4757; --track-13: #70a1ff; --track-14: #7bed9f; --track-15: #eccc68;
+  --track-16: #ffa502; --track-17: #5352ed; --track-18: #2bcbba; --track-19: #fd79a8;
 }
 
 /* ============ 2) LIVE LIGHT ============ */
@@ -47,6 +50,9 @@
   --playhead: #111111;
   --track-0: #e0502d; --track-1: #c99a00; --track-2: #5b9e1d; --track-3: #0f9b7a;
   --track-4: #1b7fd1; --track-5: #5c49d6; --track-6: #b9399f; --track-7: #d63b62;
+  --track-8: #c86a10; --track-9: #1e8c4c; --track-10: #1264b8; --track-11: #7b3eb2;
+  --track-12: #c02636; --track-13: #3d6ebc; --track-14: #479c67; --track-15: #9b7b25;
+  --track-16: #c47000; --track-17: #3534b0; --track-18: #168478; --track-19: #bd3b6c;
 }
 
 /* ============ 3) LIVE NEON ============ */
@@ -72,6 +78,9 @@
   --playhead: #ff2bd6;
   --track-0: #ff2bd6; --track-1: #ffe14d; --track-2: #39ff88; --track-3: #00e5ff;
   --track-4: #4d8bff; --track-5: #a56bff; --track-6: #ff6b9d; --track-7: #ff9d3d;
+  --track-8: #ff5252; --track-9: #00ffcc; --track-10: #00b0ff; --track-11: #b388ff;
+  --track-12: #ff4081; --track-13: #76ff03; --track-14: #ffd600; --track-15: #ff6e40;
+  --track-16: #18ffff; --track-17: #69f0ae; --track-18: #ea80fc; --track-19: #ffff00;
 }
 
 :root { --lane-h: 88px; --mixer-h: clamp(250px, 36dvh, 340px); }

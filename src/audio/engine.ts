@@ -13,6 +13,7 @@ class Engine {
   private masterMeter!: MeterSource;
   private tracks = new Map<string, Track>();
   private semis = new Map<string, number>();
+  private trims = new Map<string, { trimStart: number; trimEnd: number; fadeIn: number; fadeOut: number }>();
   private listeners = new Set<(s: TransportState) => void>();
   private state: TransportState = 'stopped';
   private rate = 1;
@@ -24,6 +25,7 @@ class Engine {
   /** Crea el AudioContext (queda "suspended" hasta el primer gesto del usuario). */
   init(): AudioContext {
     if (this.ctx) return this.ctx;
+    if (typeof window === 'undefined') return null as unknown as AudioContext;
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new Ctor({ latencyHint: 'playback' });
     this.ctx = ctx;
@@ -52,10 +54,23 @@ class Engine {
     return ctx;
   }
 
+  private audioBuffers = new Map<string, AudioBuffer>();
+  private fileInfo = new Map<string, { name: string; size: number; type: string; lastModified: number }>();
+
+  get context(): AudioContext | null { return this.ctx; }
+
   // ---------- pistas ----------
   async addTrack(id: string, file: File) {
     const ctx = this.init();
-    const buf = await ctx.decodeAudioData(await file.arrayBuffer()); // remuestrea al sampleRate del contexto
+    const arrayBuf = await file.arrayBuffer();
+    const buf = await ctx.decodeAudioData(arrayBuf); // remuestrea al sampleRate del contexto
+    this.audioBuffers.set(id, buf);
+    this.fileInfo.set(id, {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
+    });
     const peaks = computePeaks(buf);
     const analysisInput = await resampleForAnalysis(buf);
     const track = new Track(ctx, id, buf.duration, this.master);
@@ -63,16 +78,59 @@ class Engine {
     this.tracks.set(id, track);
     if (this.state === 'playing') {
       const pos = this.position;
-      if (pos < track.duration) track.start(ctx.currentTime + LEAD, pos, this.rate, this.semis.get(id) ?? 0);
+      if (pos < track.duration) track.start(ctx.currentTime + LEAD, pos, this.rate, this.semis.get(id) ?? 0, this.trims.get(id));
     }
     return { duration: buf.duration, peaks, analysisInput };
   }
 
+  async addTrackFromBuffer(
+    id: string,
+    buf: AudioBuffer,
+    fileMeta: { name: string; size?: number; type?: string; lastModified?: number },
+  ) {
+    const ctx = this.init();
+    this.audioBuffers.set(id, buf);
+    this.fileInfo.set(id, {
+      name: fileMeta.name,
+      size: fileMeta.size ?? 0,
+      type: fileMeta.type ?? 'audio/*',
+      lastModified: fileMeta.lastModified ?? Date.now(),
+    });
+    const peaks = computePeaks(buf);
+    const analysisInput = await resampleForAnalysis(buf);
+    const track = new Track(ctx, id, buf.duration, this.master);
+    await track.load(buf);
+    this.tracks.set(id, track);
+    if (this.state === 'playing') {
+      const pos = this.position;
+      if (pos < track.duration) track.start(ctx.currentTime + LEAD, pos, this.rate, this.semis.get(id) ?? 0, this.trims.get(id));
+    }
+    return { duration: buf.duration, peaks, analysisInput };
+  }
+
+  getAudioBuffer(id: string): AudioBuffer | undefined { return this.audioBuffers.get(id); }
+  getFileMeta(id: string) { return this.fileInfo.get(id); }
+  hasTrack(id: string): boolean { return this.tracks.has(id); }
+
   removeTrack(id: string) {
     this.tracks.get(id)?.dispose();
     this.tracks.delete(id);
+    this.audioBuffers.delete(id);
+    this.fileInfo.delete(id);
     this.semis.delete(id);
+    this.trims.delete(id);
     if (this.tracks.size === 0) this.stop();
+  }
+
+  clear() {
+    this.stop();
+    this.tracks.forEach((t) => t.dispose());
+    this.tracks.clear();
+    this.audioBuffers.clear();
+    this.fileInfo.clear();
+    this.semis.clear();
+    this.trims.clear();
+    this.pausedPos = 0;
   }
 
   meterSource(id: string): MeterSource | null { return this.tracks.get(id)?.meter ?? null; }
@@ -93,6 +151,24 @@ class Engine {
       tr.setPan(t.pan);
     }
     this.master.gain.setTargetAtTime(dbToGain(posToDb(masterVolPos)), this.ctx.currentTime, 0.015);
+  }
+
+  // ---------- recortes y desvanecimientos ----------
+  applyTrims(tracks: { id: string; trimStart: number; trimEnd: number; fadeIn: number; fadeOut: number }[]) {
+    for (const t of tracks) {
+      this.trims.set(t.id, {
+        trimStart: t.trimStart,
+        trimEnd: t.trimEnd,
+        fadeIn: t.fadeIn,
+        fadeOut: t.fadeOut,
+      });
+      if (this.ctx && this.state === 'playing') {
+        const tr = this.tracks.get(t.id);
+        if (tr) {
+          tr.applyClipEnvelope(this.ctx.currentTime, this.position, this.rate, this.trims.get(t.id));
+        }
+      }
+    }
   }
 
   // ---------- tono / tempo ----------
@@ -139,19 +215,19 @@ class Engine {
     const ctx = this.init();
     const when = ctx.currentTime + LEAD;
     this.tracks.forEach((t, id) => {
-      if (pos < t.duration) t.start(when, pos, this.rate, this.semis.get(id) ?? 0);
+      if (pos < t.duration) t.start(when, pos, this.rate, this.semis.get(id) ?? 0, this.trims.get(id));
     });
     this.anchorCtx = when;
     this.anchorPos = pos;
     this.setState('playing');
-    window.clearInterval(this.watch);
-    this.watch = window.setInterval(() => {
+    clearInterval(this.watch);
+    this.watch = setInterval(() => {
       if (this.state === 'playing' && this.position >= this.duration - 0.02) this.stop();
-    }, 200);
+    }, 200) as unknown as number;
   }
 
   private halt() {
-    window.clearInterval(this.watch);
+    clearInterval(this.watch);
     this.tracks.forEach((t) => t.stop());
   }
 
