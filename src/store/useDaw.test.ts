@@ -199,4 +199,53 @@ describe('useDaw store improvements', () => {
     useDaw.getState().removeSong(useDaw.getState().songs[0].id);
     expect(useDaw.getState().songs).toHaveLength(2);
   });
+
+  it('keeps tracks isolated when creating a new song while tracks exist', async () => {
+    const { addSong, selectSong } = useDaw.getState();
+    const song1Id = useDaw.getState().activeSongId;
+
+    // Simulate tracks in Song 1
+    useDaw.setState(() => ({
+      tracks: [
+        {
+          id: 't-1',
+          name: 'Pista 1',
+          colorIndex: 0,
+          status: 'ready',
+          duration: 120,
+          peaks: null,
+          volPos: 0.8,
+          pan: 0,
+          mute: false,
+          solo: false,
+          semitones: 0,
+          bpm: 120,
+          bpmConfidence: 1,
+          key: null,
+          keyConfidence: 0,
+          analysis: 'done',
+          trimStart: 0,
+          trimEnd: 120,
+          fadeIn: 0,
+          fadeOut: 0,
+          pitchLocked: false,
+        },
+      ],
+    }));
+
+    // Create Song 2
+    const song2Id = addSong('Canción 2');
+    expect(useDaw.getState().activeSongId).toBe(song2Id);
+    expect(useDaw.getState().tracks).toHaveLength(0); // Song 2 is empty!
+
+    // Verify Song 1 preserved its track
+    const song1 = useDaw.getState().songs.find((s) => s.id === song1Id);
+    expect(song1?.tracks).toHaveLength(1);
+    expect(song1?.tracks[0].id).toBe('t-1');
+
+    // Switch back to Song 1
+    await selectSong(song1Id);
+    expect(useDaw.getState().tracks).toHaveLength(1);
+    expect(useDaw.getState().tracks[0].id).toBe('t-1');
+  });
 });

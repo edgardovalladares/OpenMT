@@ -60,7 +60,11 @@ class Engine {
   get context(): AudioContext | null { return this.ctx; }
 
   // ---------- pistas ----------
-  async addTrack(id: string, file: File) {
+  async addTrack(
+    id: string,
+    file: File,
+    activate: boolean | (() => boolean) = true,
+  ) {
     const ctx = this.init();
     const arrayBuf = await file.arrayBuffer();
     const buf = await ctx.decodeAudioData(arrayBuf); // remuestrea al sampleRate del contexto
@@ -73,12 +77,18 @@ class Engine {
     });
     const peaks = computePeaks(buf);
     const analysisInput = await resampleForAnalysis(buf);
-    const track = new Track(ctx, id, buf.duration, this.master);
-    await track.load(buf);
-    this.tracks.set(id, track);
-    if (this.state === 'playing') {
-      const pos = this.position;
-      if (pos < track.duration) track.start(ctx.currentTime + LEAD, pos, this.rate, this.semis.get(id) ?? 0, this.trims.get(id));
+
+    const shouldActivate = typeof activate === 'function' ? activate() : activate;
+    if (shouldActivate) {
+      const track = new Track(ctx, id, buf.duration, this.master);
+      await track.load(buf);
+      this.tracks.set(id, track);
+      if (this.state === 'playing') {
+        const pos = this.position;
+        if (pos < track.duration) {
+          track.start(ctx.currentTime + LEAD, pos, this.rate, this.semis.get(id) ?? 0, this.trims.get(id));
+        }
+      }
     }
     return { duration: buf.duration, peaks, analysisInput };
   }
@@ -136,6 +146,17 @@ class Engine {
     this.fileInfo.clear();
     this.semis.clear();
     this.trims.clear();
+    this.pausedPos = 0;
+  }
+
+  /**
+   * Limpia solo los nodos de audio de las pistas activas,
+   * conservando los buffers cargados de otras canciones del setlist.
+   */
+  clearActiveTracks() {
+    this.stop();
+    this.tracks.forEach((t) => t.dispose());
+    this.tracks.clear();
     this.pausedPos = 0;
   }
 

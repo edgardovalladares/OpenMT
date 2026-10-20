@@ -227,6 +227,25 @@ export const useDaw = create<DawState>()((set, get) => {
   const patch = (id: string, p: Partial<TrackState>) =>
     set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...p } : t)) }));
 
+  const patchTrackInSong = (songId: string, trackId: string, p: Partial<TrackState>) => {
+    set((s) => {
+      const isCurrent = s.activeSongId === songId;
+      const nextTracks = isCurrent
+        ? s.tracks.map((t) => (t.id === trackId ? { ...t, ...p } : t))
+        : s.tracks;
+      const nextSongs = s.songs.map((song) => {
+        if (song.id === songId) {
+          const updatedTracks = isCurrent
+            ? nextTracks
+            : song.tracks.map((t) => (t.id === trackId ? { ...t, ...p } : t));
+          return { ...song, tracks: updatedTracks };
+        }
+        return song;
+      });
+      return { tracks: nextTracks, songs: nextSongs };
+    });
+  };
+
   const pushUndo = () => {
     const snap = makeSnapshot(get());
     undoStack.push(snap);
@@ -319,7 +338,7 @@ export const useDaw = create<DawState>()((set, get) => {
         canRedo: false,
       });
 
-      engine.clear();
+      engine.clearActiveTracks();
       broadcastLyricsUpdate('', 350, songName, s.lyricsOptions);
       broadcastTimeUpdate(0, 'stopped', 0);
       return newId;
@@ -698,64 +717,100 @@ export const useDaw = create<DawState>()((set, get) => {
 
     async addFiles(files) {
       pushUndo();
+      const targetSongId = get().activeSongId;
       for (const file of files) {
-        if (get().tracks.length >= MAX_TRACKS) break;
+        // Verificar que la canción a la que se agregaron las pistas aún exista
+        const currentSongs = get().songs;
+        const targetSong = currentSongs.find((s) => s.id === targetSongId);
+        if (!targetSong) break;
+
+        const isCurrentActive = get().activeSongId === targetSongId;
+        const targetTracks = isCurrentActive ? get().tracks : targetSong.tracks;
+        if (targetTracks.length >= MAX_TRACKS) break;
+
         const id = crypto.randomUUID();
-        const used = new Set(get().tracks.map((t) => t.colorIndex));
+        const used = new Set(targetTracks.map((t) => t.colorIndex));
         const colorPalette = Array.from({ length: MAX_TRACKS }, (_, i) => i);
-        const colorIndex = colorPalette.find((i) => !used.has(i)) ?? (get().tracks.length % MAX_TRACKS);
+        const colorIndex = colorPalette.find((i) => !used.has(i)) ?? (targetTracks.length % MAX_TRACKS);
         const isRhythmicOrGuide = /drum|bater[ií]a|perc|click|claqueta|metr[oó]nomo|hi-?hat|snare|kick|caja|bombo|shaker|pandereta|tambor|gui[aá]|gu[ií]de/i.test(file.name);
-        set((s) => ({
-          refTrackId: s.refTrackId ?? id,
-          tracks: [...s.tracks, {
-            id,
-            name: file.name.replace(/\.[^.]+$/, ''),
-            colorIndex,
-            status: 'loading',
-            duration: 0,
-            peaks: null,
-            volPos: UNITY_POS,
-            pan: 0,
-            mute: false,
-            solo: false,
-            semitones: 0,
-            bpm: null,
-            bpmConfidence: 0,
-            key: null,
-            keyConfidence: 0,
-            analysis: 'pending',
-            trimStart: 0,
-            trimEnd: 0,
-            fadeIn: 0,
-            fadeOut: 0,
-            pitchLocked: isRhythmicOrGuide,
-            fileMeta: {
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              lastModified: file.lastModified,
-            },
-          }],
-        }));
+
+        const newTrack: TrackState = {
+          id,
+          name: file.name.replace(/\.[^.]+$/, ''),
+          colorIndex,
+          status: 'loading',
+          duration: 0,
+          peaks: null,
+          volPos: UNITY_POS,
+          pan: 0,
+          mute: false,
+          solo: false,
+          semitones: 0,
+          bpm: null,
+          bpmConfidence: 0,
+          key: null,
+          keyConfidence: 0,
+          analysis: 'pending',
+          trimStart: 0,
+          trimEnd: 0,
+          fadeIn: 0,
+          fadeOut: 0,
+          pitchLocked: isRhythmicOrGuide,
+          fileMeta: {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+          },
+        };
+
+        // Agregar la pista específicamente a la canción destino
+        set((s) => {
+          const isActive = s.activeSongId === targetSongId;
+          const nextTracks = isActive ? [...s.tracks, newTrack] : s.tracks;
+          const nextSongs = s.songs.map((song) => {
+            if (song.id === targetSongId) {
+              const updatedTracks = isActive ? nextTracks : [...song.tracks, newTrack];
+              return {
+                ...song,
+                tracks: updatedTracks,
+                refTrackId: song.refTrackId ?? id,
+              };
+            }
+            return song;
+          });
+          return {
+            tracks: nextTracks,
+            songs: nextSongs,
+            refTrackId: isActive ? (s.refTrackId ?? id) : s.refTrackId,
+          };
+        });
+
         try {
-          const info = await engine.addTrack(id, file);
-          patch(id, {
+          const info = await engine.addTrack(
+            id,
+            file,
+            () => get().activeSongId === targetSongId,
+          );
+          patchTrackInSong(targetSongId, id, {
             status: 'ready',
             duration: info.duration,
             peaks: info.peaks,
             trimEnd: info.duration,
           });
           analyze(info.analysisInput, ANALYSIS_SR)
-            .then((r) => patch(id, {
-              analysis: 'done',
-              bpm: r.bpm?.bpm ?? null,
-              bpmConfidence: r.bpm?.confidence ?? 0,
-              key: r.key ? { tonic: r.key.tonic, mode: r.key.mode } : null,
-              keyConfidence: r.key?.confidence ?? 0,
-            }))
-            .catch(() => patch(id, { analysis: 'error' }));
+            .then((r) =>
+              patchTrackInSong(targetSongId, id, {
+                analysis: 'done',
+                bpm: r.bpm?.bpm ?? null,
+                bpmConfidence: r.bpm?.confidence ?? 0,
+                key: r.key ? { tonic: r.key.tonic, mode: r.key.mode } : null,
+                keyConfidence: r.key?.confidence ?? 0,
+              }),
+            )
+            .catch(() => patchTrackInSong(targetSongId, id, { analysis: 'error' }));
         } catch (e) {
-          patch(id, {
+          patchTrackInSong(targetSongId, id, {
             status: 'error',
             analysis: 'error',
             error: e instanceof Error ? e.message : 'No se pudo decodificar el archivo',

@@ -7,6 +7,7 @@ import { formatTime } from '../audio/music';
 import { IconOpen, IconPause, IconPlay, IconStop } from './Icons';
 import { TempoPanel } from './TempoPanel';
 import { KeyPanel } from './KeyPanel';
+import { SongCards } from './SongCards';
 
 function Clock() {
   const ref = useRef<HTMLSpanElement>(null);
@@ -133,6 +134,12 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
             <span>{hasLyrics ? 'Letras (LRC)' : 'Cargar Letra'}</span>
           </button>
         </div>
+      </section>
+
+      {/* Panel Repertorio / Setlist de Canciones */}
+      <section className="panel panel--setlist" aria-label="Repertorio en Vivo">
+        <span className="panel__label">SETLIST / REPERTORIO</span>
+        <SongCards />
       </section>
 
       {/* Indicador visible cuando una sección está en cola para saltar */}

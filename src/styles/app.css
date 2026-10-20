@@ -1078,6 +1078,70 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   white-space: nowrap;
 }
 
+/* Pestaña 2: Diseño y Vista Previa */
+.lyrics-display-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 840px) {
+  .lyrics-display-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lyrics-display-left,
+.lyrics-display-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lyrics-display-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+}
+.lyrics-display-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-inset));
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 4px;
+}
+.lyrics-preview-box--large {
+  min-height: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pestaña 3: Transmisión, Enlaces y Código QR */
+.lyrics-broadcast-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lyrics-broadcast-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 840px) {
+  .lyrics-broadcast-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lyrics-broadcast-left,
+.lyrics-broadcast-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* Grid de 2 columnas para Transmisión OBS */
 .lyrics-obs-grid {
   display: grid;
@@ -1562,167 +1626,138 @@ body:has(.lyrics-stage--transparent),
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
-/* ---------- Barra de Pestañas de Repertorio / Canciones ---------- */
-.song-tabs-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
-  padding: 4px 10px;
-  min-height: 34px;
-  user-select: none;
+/* ---------- Panel de Repertorio y Tarjetas de Canción en TopBar ---------- */
+.panel--setlist {
+  min-width: 0;
+  max-width: 580px;
+  flex: 1;
 }
-.song-tabs-bar__label {
+.song-cards-row {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  color: var(--text-dim);
-  padding: 0 6px 0 2px;
-  border-right: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.song-tabs-bar__scroll {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   overflow-x: auto;
-  scrollbar-width: none;
-  flex: 1;
+  max-width: 100%;
   padding: 1px 0;
+  scrollbar-width: thin;
 }
-.song-tabs-bar__scroll::-webkit-scrollbar {
-  display: none;
+.song-cards-row::-webkit-scrollbar {
+  height: 3px;
 }
-.song-tabs-bar__scroll-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  border-radius: 3px;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  flex-shrink: 0;
+.song-cards-row::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 2px;
 }
-.song-tabs-bar__scroll-btn:hover {
-  color: var(--text);
-  border-color: var(--text-dim);
-}
-.song-tab {
+.song-card {
+  height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  background: var(--bg-inset);
+  gap: 5px;
+  padding: 0 8px;
+  background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 11px;
-  font-weight: 600;
   color: var(--text-dim);
   cursor: pointer;
+  user-select: none;
   transition: all .15s ease;
   white-space: nowrap;
-  max-width: 240px;
+  flex-shrink: 0;
 }
-.song-tab:hover {
-  color: var(--text);
+.song-card:hover {
   border-color: var(--border-soft);
-  background: var(--bg-raised);
-}
-.song-tab--active {
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-raised));
-  border-color: var(--accent);
+  background: var(--bg-inset);
   color: var(--text);
 }
-.song-tab__icon {
-  display: flex;
-  align-items: center;
+.song-card--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg-panel));
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.song-card__num {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--bg-inset);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.song-card--active .song-card__num {
   color: var(--accent);
-  opacity: .75;
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
 }
-.song-tab--active .song-tab__icon {
-  opacity: 1;
-}
-.song-tab__name {
+.song-card__name {
+  max-width: 105px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.song-tab__badge {
+.song-card__badge {
   font-size: 9px;
   padding: 1px 4px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  background: var(--bg-inset);
   color: var(--text-dim);
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-.song-tab--active .song-tab__badge {
+.song-card--active .song-card__badge {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
 }
-.song-tab__lyrics-indicator {
+.song-card__lyrics-dot {
   color: var(--meter-ok);
   display: flex;
   align-items: center;
+  margin-left: 1px;
 }
-.song-tab__actions {
-  display: none;
+.song-card__actions {
+  display: flex;
   align-items: center;
   gap: 2px;
   margin-left: 2px;
 }
-.song-tab:hover .song-tab__actions,
-.song-tab--active .song-tab__actions {
-  display: flex;
-}
-.song-tab__action-btn {
+.song-card__action-btn {
   background: transparent;
   border: none;
-  padding: 1px 3px;
+  padding: 2px;
   border-radius: 2px;
   color: var(--text-dim);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
 }
-.song-tab__action-btn:hover {
+.song-card__action-btn:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
 }
-.song-tab__action-btn--danger:hover {
-  color: #ff4d4f;
+.song-card__action-btn--danger:hover {
+  color: var(--meter-hot);
 }
-.song-tab__edit {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.song-tab__input {
-  background: var(--bg-app);
+.song-card__input {
+  background: var(--bg-inset);
   border: 1px solid var(--accent);
   color: var(--text);
   font-size: 11px;
   padding: 1px 4px;
   border-radius: 2px;
-  width: 110px;
+  width: 90px;
 }
-.song-tabs-bar__add-btn {
+.song-card-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px;
+  height: 28px;
+  padding: 0 8px;
   background: transparent;
   border: 1px dashed var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-dim);
@@ -1731,10 +1766,10 @@ body:has(.lyrics-stage--transparent),
   white-space: nowrap;
   flex-shrink: 0;
 }
-.song-tabs-bar__add-btn:hover {
+.song-card-add-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 
