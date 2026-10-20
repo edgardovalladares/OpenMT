@@ -11,6 +11,7 @@ import {
   subscribeLyricsSync,
   getStoredLyricsState,
   requestFullSync,
+  isLocalHost,
 } from '../audio/lyricsSync';
 
 export function LyricsView() {
@@ -56,28 +57,63 @@ export function LyricsView() {
 
   const prompterContainerRef = useRef<HTMLDivElement>(null);
 
-  // Solicitar sincronización y escuchar actualizaciones en tiempo real (Local SSE, BroadcastChannel y Sala Online)
+  // Aplicar datos de sincronización recibidos por cualquier canal
+  const applySyncData = (msg: Partial<LyricsSyncMessage>) => {
+    if (!msg) return;
+    if (msg.rawLrc !== undefined) setRawLrc(msg.rawLrc);
+    if (msg.offsetMs !== undefined) setOffsetMs(msg.offsetMs);
+    if (msg.position !== undefined) setPosition(msg.position);
+    if (msg.options) {
+      if (msg.options.theme) setTheme(msg.options.theme);
+      if (msg.options.mode) setMode(msg.options.mode);
+      if (msg.options.fontSize) setFontSize(msg.options.fontSize);
+      if (msg.options.uppercase !== undefined) setUppercase(msg.options.uppercase);
+      if (msg.options.showNext !== undefined) setShowNext(msg.options.showNext);
+    }
+  };
+
+  // Solicitar sincronización y escuchar actualizaciones en tiempo real (Local SSE, BroadcastChannel, WebRTC y localStorage)
   useEffect(() => {
+    // 1. Cargar estado inicial desde servidor local de Vite de inmediato si está disponible
+    if (isLocalHost()) {
+      fetch('/api/lyrics/sync')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data) applySyncData(data);
+        })
+        .catch(() => {});
+    }
+
+    // 2. Pedir sincronización completa a OpenMT
     requestFullSync();
 
+    // 3. Suscripción a BroadcastChannel, EventSource (SSE local), y WebRTC DataChannel
     const unsubscribe = subscribeLyricsSync((msg: LyricsSyncMessage) => {
-      if (msg.type === 'TIME_UPDATE') {
-        if (msg.position !== undefined) setPosition(msg.position);
-      } else if (msg.type === 'LYRICS_UPDATE' || msg.type === 'FULL_SYNC') {
-        if (msg.rawLrc !== undefined) setRawLrc(msg.rawLrc);
-        if (msg.offsetMs !== undefined) setOffsetMs(msg.offsetMs);
-        if (msg.position !== undefined) setPosition(msg.position);
-
-        // Actualizar opciones de apariencia dinámicamente si vienen en el mensaje
-        if (msg.options) {
-          if (msg.options.theme) setTheme(msg.options.theme);
-          if (msg.options.mode) setMode(msg.options.mode);
-          if (msg.options.fontSize) setFontSize(msg.options.fontSize);
-          if (msg.options.uppercase !== undefined) setUppercase(msg.options.uppercase);
-          if (msg.options.showNext !== undefined) setShowNext(msg.options.showNext);
-        }
-      }
+      applySyncData(msg);
     }, room);
+
+    // 4. Polling continuo de localStorage (50ms) como respaldo infalible para ventanas y popups
+    let lastTs = 0;
+    let lastPos = -1;
+    let lastRaw = '';
+    const intervalId = setInterval(() => {
+      try {
+        const stored = getStoredLyricsState();
+        if (stored) {
+          const ts = stored.timestamp ?? 0;
+          const pos = stored.position ?? -1;
+          const raw = stored.rawLrc ?? '';
+          if (ts !== lastTs || pos !== lastPos || raw !== lastRaw) {
+            lastTs = ts;
+            lastPos = pos;
+            lastRaw = raw;
+            applySyncData(stored);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }, 50);
 
     // Permitir pantalla completa con doble clic o tecla 'F'
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -93,6 +129,7 @@ export function LyricsView() {
 
     return () => {
       unsubscribe();
+      clearInterval(intervalId);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [room]);

@@ -1,9 +1,10 @@
 import type { LyricsSyncMessage, LyricsDisplayOptions } from '../types/lyrics';
+import type { DataConnection } from 'peerjs';
 
-const CHANNEL_NAME = 'openmt_lyrics_channel';
-const STORAGE_KEY = 'openmt_lyrics_state';
-const LOCAL_API_SYNC = '/api/lyrics/sync';
-const LOCAL_API_EVENTS = '/api/lyrics/events';
+export const CHANNEL_NAME = 'openmt_lyrics_channel';
+export const STORAGE_KEY = 'openmt_lyrics_state';
+export const LOCAL_API_SYNC = '/api/lyrics/sync';
+export const LOCAL_API_EVENTS = '/api/lyrics/events';
 
 let channel: BroadcastChannel | null = null;
 try {
@@ -18,8 +19,135 @@ let activeRoom: string | null = null;
 let lastSyncPostTime = 0;
 let lastTimeBroadcast = 0;
 
+// Host WebRTC connections (PeerJS)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let hostPeerInstance: any = null;
+const hostPeerConnections = new Set<DataConnection>();
+
+export function isLocalHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const h = window.location.hostname;
+  return (
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '[::1]' ||
+    h.startsWith('192.168.') ||
+    h.startsWith('10.') ||
+    h.startsWith('172.') ||
+    h.endsWith('.local')
+  );
+}
+
 export function setActiveRoom(room: string | null) {
   activeRoom = room;
+  if (!room) {
+    if (hostPeerInstance) {
+      try {
+        hostPeerInstance.destroy();
+      } catch {
+        // ignore
+      }
+      hostPeerInstance = null;
+      hostPeerConnections.clear();
+    }
+    return;
+  }
+
+  // Si ya tenemos un peer con esta sala, conservarlo
+  if (hostPeerInstance && hostPeerInstance.id === room) return;
+
+  if (typeof window !== 'undefined') {
+    try {
+      if (hostPeerInstance) {
+        try {
+          hostPeerInstance.destroy();
+        } catch {
+          // ignore
+        }
+        hostPeerConnections.clear();
+      }
+
+      import('peerjs')
+        .then(({ Peer }) => {
+          const p = new Peer(room, {
+            debug: 0,
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' },
+              ],
+            },
+          });
+
+          p.on('open', () => {
+            hostPeerInstance = p;
+          });
+
+          p.on('connection', (conn) => {
+            hostPeerConnections.add(conn);
+
+            conn.on('open', () => {
+              // Enviar inmediatamente sincronización completa al nuevo visor
+              const stored = getStoredLyricsState();
+              try {
+                conn.send({
+                  type: 'FULL_SYNC',
+                  rawLrc: stored.rawLrc ?? '',
+                  offsetMs: stored.offsetMs ?? 350,
+                  position: stored.position ?? 0,
+                  transport: stored.transport ?? 'stopped',
+                  duration: stored.duration ?? 0,
+                  options: stored.options,
+                  projectName: stored.projectName,
+                  room,
+                  timestamp: Date.now(),
+                });
+              } catch {
+                // ignore
+              }
+            });
+
+            conn.on('data', (data: unknown) => {
+              const msg = data as { type?: string };
+              if (msg && msg.type === 'REQUEST_FULL_SYNC') {
+                const stored = getStoredLyricsState();
+                try {
+                  conn.send({
+                    type: 'FULL_SYNC',
+                    rawLrc: stored.rawLrc ?? '',
+                    offsetMs: stored.offsetMs ?? 350,
+                    position: stored.position ?? 0,
+                    transport: stored.transport ?? 'stopped',
+                    duration: stored.duration ?? 0,
+                    options: stored.options,
+                    projectName: stored.projectName,
+                    room,
+                    timestamp: Date.now(),
+                  });
+                } catch {
+                  // ignore
+                }
+              }
+            });
+
+            conn.on('close', () => {
+              hostPeerConnections.delete(conn);
+            });
+
+            conn.on('error', () => {
+              hostPeerConnections.delete(conn);
+            });
+          });
+
+          p.on('error', (err) => {
+            console.warn('[OpenMT PeerJS Host]', err?.type || err);
+          });
+        })
+        .catch(() => {});
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export function getActiveRoom(): string | null {
@@ -27,11 +155,27 @@ export function getActiveRoom(): string | null {
 }
 
 /**
- * Envia actualización al endpoint local de Vite (/api/lyrics/sync) y a la sala online si está activa.
+ * Envia el mensaje a todos los visores remotos conectados por WebRTC
+ */
+function sendToPeerClients(msg: LyricsSyncMessage) {
+  if (hostPeerConnections.size > 0) {
+    for (const conn of hostPeerConnections) {
+      if (conn.open) {
+        try {
+          conn.send(msg);
+        } catch {
+          hostPeerConnections.delete(conn);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Envia actualización al endpoint local de Vite (/api/lyrics/sync)
  */
 function postToServerRelay(msg: LyricsSyncMessage) {
-  // 1. Servidor local de Vite (para OBS en localhost)
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (isLocalHost()) {
     try {
       void fetch(LOCAL_API_SYNC, {
         method: 'POST',
@@ -39,21 +183,6 @@ function postToServerRelay(msg: LyricsSyncMessage) {
         body: JSON.stringify(msg),
       }).catch(() => {
         // Silenciar si no está corriendo el dev server
-      });
-    } catch {
-      // ignore
-    }
-  }
-
-  // 2. Si hay una sala remota activa (para enlaces temporales de compartir)
-  if (activeRoom) {
-    try {
-      void fetch(`https://ntfy.sh/${activeRoom}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(msg),
-      }).catch(() => {
-        // ignore
       });
     } catch {
       // ignore
@@ -70,8 +199,8 @@ export function broadcastTimeUpdate(
   duration: number,
 ) {
   const now = Date.now();
-  // Throttling: máximo 20-25 actualizaciones por segundo para transporte jugando (suficiente para 60fps visuales suaves)
-  if (transport === 'playing' && now - lastTimeBroadcast < 45) {
+  // Throttling: ~25 actualizaciones por segundo cuando reproduce
+  if (transport === 'playing' && now - lastTimeBroadcast < 40) {
     return;
   }
   lastTimeBroadcast = now;
@@ -84,6 +213,7 @@ export function broadcastTimeUpdate(
     timestamp: now,
   };
 
+  // 1. BroadcastChannel (mismo navegador)
   if (channel) {
     try {
       channel.postMessage(msg);
@@ -92,19 +222,23 @@ export function broadcastTimeUpdate(
     }
   }
 
-  // Enviar a los servidores locales y online
-  if (now - lastSyncPostTime > 60 || transport !== 'playing') {
+  // 2. Relay local para OBS en el equipo
+  if (now - lastSyncPostTime > 50 || transport !== 'playing') {
     lastSyncPostTime = now;
     postToServerRelay(msg);
   }
 
-  // Guardar en localStorage
+  // 3. WebRTC DataChannels para pantallas remotas
+  sendToPeerClients(msg);
+
+  // 4. Guardar en localStorage (incluyendo explícitamente type y timestamp)
   try {
     const existing = getStoredLyricsState();
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         ...existing,
+        type: 'TIME_UPDATE',
         position,
         transport,
         duration,
@@ -125,6 +259,7 @@ export function broadcastLyricsUpdate(
   projectName?: string,
   options?: Partial<LyricsDisplayOptions>,
 ) {
+  const now = Date.now();
   const msg: LyricsSyncMessage = {
     type: 'LYRICS_UPDATE',
     rawLrc,
@@ -132,7 +267,7 @@ export function broadcastLyricsUpdate(
     projectName,
     options,
     room: activeRoom ?? undefined,
-    timestamp: Date.now(),
+    timestamp: now,
   };
 
   if (channel) {
@@ -144,6 +279,7 @@ export function broadcastLyricsUpdate(
   }
 
   postToServerRelay(msg);
+  sendToPeerClients(msg);
 
   try {
     const existing = getStoredLyricsState();
@@ -151,11 +287,12 @@ export function broadcastLyricsUpdate(
       STORAGE_KEY,
       JSON.stringify({
         ...existing,
+        type: 'LYRICS_UPDATE',
         rawLrc,
         offsetMs,
         projectName: projectName ?? existing.projectName,
         options: options ?? existing.options,
-        timestamp: Date.now(),
+        timestamp: now,
       }),
     );
   } catch {
@@ -175,11 +312,12 @@ export function broadcastFullSync(state: {
   projectName: string;
   options?: Partial<LyricsDisplayOptions>;
 }) {
+  const now = Date.now();
   const msg: LyricsSyncMessage = {
     type: 'FULL_SYNC',
     ...state,
     room: activeRoom ?? undefined,
-    timestamp: Date.now(),
+    timestamp: now,
   };
 
   if (channel) {
@@ -191,6 +329,7 @@ export function broadcastFullSync(state: {
   }
 
   postToServerRelay(msg);
+  sendToPeerClients(msg);
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(msg));
@@ -229,8 +368,8 @@ export function getStoredLyricsState(): Partial<LyricsSyncMessage> {
  * Se suscribe a los mensajes de sincronización de letra (para OBS, popup o pantallas)
  * Combina:
  * 1. BroadcastChannel (para ventanas del mismo navegador)
- * 2. EventSource local de Vite (/api/lyrics/events para OBS en localhost)
- * 3. EventSource remoto (si se especifica room)
+ * 2. EventSource local de Vite (/api/lyrics/events para OBS en localhost/red)
+ * 3. WebRTC DataChannel directo (si se especifica room)
  * 4. Eventos de localStorage
  */
 export function subscribeLyricsSync(
@@ -239,7 +378,7 @@ export function subscribeLyricsSync(
 ): () => void {
   // 1. BroadcastChannel
   const handleMessage = (e: MessageEvent<LyricsSyncMessage>) => {
-    if (e.data && e.data.type) {
+    if (e.data) {
       callback(e.data);
     }
   };
@@ -253,7 +392,9 @@ export function subscribeLyricsSync(
     if (e.key === STORAGE_KEY && e.newValue) {
       try {
         const parsed = JSON.parse(e.newValue);
-        callback(parsed);
+        if (parsed) {
+          callback(parsed);
+        }
       } catch {
         // ignore
       }
@@ -261,38 +402,103 @@ export function subscribeLyricsSync(
   };
   window.addEventListener('storage', handleStorage);
 
-  // 3. Server-Sent Events (SSE)
+  // 3. Server-Sent Events (SSE) local para OBS en localhost / red local
   let sse: EventSource | null = null;
+  let sseTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  // Si hay una sala remota especificada (por ejemplo en un enlace compartido)
-  if (room) {
-    try {
-      sse = new EventSource(`https://ntfy.sh/${room}/sse`);
-      sse.onmessage = (event) => {
-        try {
-          const parsed = JSON.parse(event.data);
-          callback(parsed);
-        } catch {
-          // ignore
-        }
-      };
-    } catch {
-      sse = null;
+  function connectLocalSSE() {
+    if (isLocalHost()) {
+      try {
+        sse = new EventSource(LOCAL_API_EVENTS);
+        sse.onmessage = (event) => {
+          try {
+            const parsed = JSON.parse(event.data);
+            if (parsed) {
+              callback(parsed);
+            }
+          } catch {
+            // ignore
+          }
+        };
+        sse.onerror = () => {
+          if (sse) {
+            try {
+              sse.close();
+            } catch {
+              // ignore
+            }
+            sse = null;
+          }
+          // Reconectar en 2 segundos
+          sseTimeoutId = setTimeout(connectLocalSSE, 2000);
+        };
+      } catch {
+        sse = null;
+      }
     }
-  } else if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    // Conexión local SSE para OBS Browser Source en localhost
+  }
+
+  connectLocalSSE();
+
+  // 4. WebRTC PeerJS Client si hay sala remota configurada
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let clientPeer: any = null;
+
+  if (room && typeof window !== 'undefined') {
     try {
-      sse = new EventSource(LOCAL_API_EVENTS);
-      sse.onmessage = (event) => {
-        try {
-          const parsed = JSON.parse(event.data);
-          callback(parsed);
-        } catch {
-          // ignore
-        }
-      };
+      import('peerjs')
+        .then(({ Peer }) => {
+          clientPeer = new Peer({
+            debug: 0,
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' },
+              ],
+            },
+          });
+
+          clientPeer.on('open', () => {
+            const conn = clientPeer.connect(room, { reliable: true });
+
+            conn.on('open', () => {
+              try {
+                conn.send({ type: 'REQUEST_FULL_SYNC', timestamp: Date.now() });
+              } catch {
+                // ignore
+              }
+            });
+
+            conn.on('data', (data: unknown) => {
+              if (data) {
+                callback(data as LyricsSyncMessage);
+              }
+            });
+
+            conn.on('close', () => {
+              // Reintentar conexión tras 2 segundos si el peer sigue vivo
+              setTimeout(() => {
+                if (clientPeer && !clientPeer.destroyed) {
+                  try {
+                    const retry = clientPeer.connect(room, { reliable: true });
+                    retry.on('data', (d: unknown) => {
+                      if (d) callback(d as LyricsSyncMessage);
+                    });
+                  } catch {
+                    // ignore
+                  }
+                }
+              }, 2000);
+            });
+          });
+
+          clientPeer.on('error', (err: unknown) => {
+            console.warn('[OpenMT PeerJS Client]', err);
+          });
+        })
+        .catch(() => {});
     } catch {
-      sse = null;
+      // ignore
     }
   }
 
@@ -301,8 +507,22 @@ export function subscribeLyricsSync(
       channel.removeEventListener('message', handleMessage);
     }
     window.removeEventListener('storage', handleStorage);
+    if (sseTimeoutId) {
+      clearTimeout(sseTimeoutId);
+    }
     if (sse) {
-      sse.close();
+      try {
+        sse.close();
+      } catch {
+        // ignore
+      }
+    }
+    if (clientPeer) {
+      try {
+        clientPeer.destroy();
+      } catch {
+        // ignore
+      }
     }
   };
 }

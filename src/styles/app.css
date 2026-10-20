@@ -930,7 +930,10 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 }
 
 /* ---------- modal y visor de letras sincronizadas (lrc / obs) ---------- */
-.lyrics-modal { max-width: 720px; }
+.lyrics-modal {
+  max-width: min(1080px, 95vw);
+  width: 100%;
+}
 .lyrics-modal__tabs {
   display: flex;
   gap: 4px;
@@ -957,10 +960,24 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
-.lyrics-editor-tab {
+
+/* Grid de 2 columnas para Editor */
+.lyrics-editor-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 840px) {
+  .lyrics-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lyrics-editor-left,
+.lyrics-editor-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .lyrics-editor-tab__top {
   display: flex;
@@ -973,10 +990,11 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   font-size: 12px;
   line-height: 1.6;
   resize: vertical;
-  min-height: 180px;
+  min-height: 220px;
   max-height: 380px;
   white-space: pre;
 }
+
 /* Calibración de timing / Latencia de audio */
 .lyrics-timing-card {
   display: flex;
@@ -1013,18 +1031,77 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   color: var(--text-dim);
 }
 
-/* Transmisión a OBS */
-.lyrics-obs-tab {
+/* Previsualización de versos detectados */
+.lyrics-parsed-card {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
+}
+.lyrics-parsed-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+.lyrics-parsed-card__list {
+  overflow-y: auto;
+  max-height: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+.lyrics-parsed-card__item {
+  font-size: 11px;
+  line-height: 1.35;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--bg-panel);
+}
+.lyrics-parsed-card__time {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.lyrics-parsed-card__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Grid de 2 columnas para Transmisión OBS */
+.lyrics-obs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 840px) {
+  .lyrics-obs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lyrics-obs-left,
+.lyrics-obs-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .lyrics-obs-tab__hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 10px 12px;
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-inset));
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-radius: 4px;
@@ -1046,8 +1123,8 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 10px 12px;
 }
 .lyrics-link-row__info {
   display: flex;
@@ -1057,15 +1134,15 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 .lyrics-obs-settings {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 12px;
   background: var(--bg-inset);
   border: 1px solid var(--border);
   border-radius: 4px;
 }
 .lyrics-preview-box {
-  min-height: 90px;
-  padding: 16px;
+  min-height: 85px;
+  padding: 14px;
   border-radius: 4px;
   border: 1px dashed var(--border-soft);
   display: flex;
@@ -1074,7 +1151,7 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   transition: all .2s ease;
 }
 .lyrics-obs-guide {
-  padding: 10px 14px;
+  padding: 10px 12px;
   background: var(--bg-inset);
   border: 1px solid var(--border-soft);
   border-radius: 4px;

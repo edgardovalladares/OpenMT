@@ -40,6 +40,7 @@ subscribeLyricsSync((msg) => {
       transport: engine.transport,
       duration: engine.duration,
       projectName: s.projectName,
+      options: s.lyricsOptions,
     });
   }
 });

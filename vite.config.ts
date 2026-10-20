@@ -36,7 +36,7 @@ function lyricsSyncPlugin(): Plugin {
         sseClients.add(res);
 
         // Enviar estado actual de inmediato al conectar
-        res.write(`data: ${JSON.stringify(currentState)}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'FULL_SYNC', ...currentState })}\n\n`);
 
         req.on('close', () => {
           sseClients.delete(res);
@@ -64,7 +64,7 @@ function lyricsSyncPlugin(): Plugin {
             try {
               const data = JSON.parse(body);
               currentState = { ...currentState, ...data, timestamp: Date.now() };
-              const payload = `data: ${JSON.stringify(currentState)}\n\n`;
+              const payload = `data: ${JSON.stringify({ type: data.type || 'FULL_SYNC', ...currentState })}\n\n`;
               for (const client of sseClients) {
                 try {
                   client.write(payload);
@@ -87,7 +87,7 @@ function lyricsSyncPlugin(): Plugin {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
           });
-          res.end(JSON.stringify(currentState));
+          res.end(JSON.stringify({ type: 'FULL_SYNC', ...currentState }));
         }
       });
     },
