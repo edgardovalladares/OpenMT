@@ -5,6 +5,8 @@ import { ANALYSIS_SR } from '../audio/peaks';
 import { UNITY_POS } from '../audio/dbMath';
 import type { KeyInfo } from '../audio/music';
 import type { DawProject, ProjectTrackData, SongSection } from '../types/project';
+import type { LyricsData, LyricsDisplayOptions } from '../types/lyrics';
+import { broadcastLyricsUpdate } from '../audio/lyricsSync';
 import { selectRef } from './derived';
 
 export const MAX_TRACKS = 20;
@@ -111,6 +113,14 @@ export interface DawState {
   undo(): void;
   redo(): void;
 
+  // Letras sincronizadas (LRC)
+  lyrics: LyricsData;
+  lyricsOptions: LyricsDisplayOptions;
+  setLyrics(rawLrc: string, offsetMs?: number): void;
+  setLyricsOffset(offsetMs: number): void;
+  setLyricsOptions(partial: Partial<LyricsDisplayOptions>): void;
+  clearLyrics(): void;
+
   setProjectName(name: string): void;
   addFiles(files: File[]): Promise<void>;
   relinkTrack(id: string, file: File): Promise<void>;
@@ -191,6 +201,37 @@ export const useDaw = create<DawState>()((set, get) => {
     masterCents: 0,
     keyLock: true,
     transport: 'stopped',
+
+    // Letras sincronizadas
+    lyrics: { rawLrc: '', offsetMs: 350 },
+    lyricsOptions: {
+      theme: 'transparent',
+      mode: 'lowerthird',
+      fontSize: 'large',
+      uppercase: false,
+      showNext: true,
+    },
+    setLyrics: (rawLrc, offsetMs = 350) => {
+      set({ lyrics: { rawLrc, offsetMs } });
+      const s = get();
+      broadcastLyricsUpdate(rawLrc, offsetMs, s.projectName, s.lyricsOptions);
+    },
+    setLyricsOffset: (offsetMs) => {
+      const s = get();
+      set({ lyrics: { ...s.lyrics, offsetMs } });
+      broadcastLyricsUpdate(s.lyrics.rawLrc, offsetMs, s.projectName, s.lyricsOptions);
+    },
+    setLyricsOptions: (partial) => {
+      const s = get();
+      const updated = { ...s.lyricsOptions, ...partial };
+      set({ lyricsOptions: updated });
+      broadcastLyricsUpdate(s.lyrics.rawLrc, s.lyrics.offsetMs, s.projectName, updated);
+    },
+    clearLyrics: () => {
+      set({ lyrics: { rawLrc: '', offsetMs: 350 } });
+      const s = get();
+      broadcastLyricsUpdate('', 350, s.projectName, s.lyricsOptions);
+    },
 
     // Zoom
     zoom: 1,
@@ -538,9 +579,11 @@ export const useDaw = create<DawState>()((set, get) => {
         activeSectionId: null,
         loopSectionId: null,
         queuedSectionId: null,
+        lyrics: { rawLrc: '', offsetMs: 350 },
         canUndo: false,
         canRedo: false,
       });
+      broadcastLyricsUpdate('', 350, 'Nuevo Proyecto', get().lyricsOptions);
     },
 
     loadProject(project: DawProject) {
@@ -589,9 +632,17 @@ export const useDaw = create<DawState>()((set, get) => {
         activeSectionId: null,
         loopSectionId: null,
         queuedSectionId: null,
+        lyrics: project.lyrics ?? { rawLrc: '', offsetMs: 350 },
+        lyricsOptions: project.lyrics?.options ? { ...get().lyricsOptions, ...project.lyrics.options } : get().lyricsOptions,
         canUndo: false,
         canRedo: false,
       });
+      broadcastLyricsUpdate(
+        project.lyrics?.rawLrc ?? '',
+        project.lyrics?.offsetMs ?? 350,
+        project.name || 'Proyecto',
+        project.lyrics?.options ?? get().lyricsOptions,
+      );
     },
 
     getProjectData(): DawProject {
@@ -643,6 +694,7 @@ export const useDaw = create<DawState>()((set, get) => {
         },
         tracks,
         sections: s.sections,
+        lyrics: { ...s.lyrics, options: s.lyricsOptions },
       };
     },
 

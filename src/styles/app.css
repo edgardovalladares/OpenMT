@@ -355,7 +355,9 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 .strip--vertical .pan { width: 100%; }
 .strip--master { margin-left: auto; border-top-color: var(--accent); position: sticky; right: 0; }
 .ms { display: flex; gap: 4px; }
-.pan { display: flex; flex-direction: column; font-size: 9px; color: var(--text-dim); min-width: 70px; }
+.pan { display: flex; flex-direction: column; font-size: 9px; color: var(--text-dim); min-width: 70px; cursor: pointer; user-select: none; }
+.pan__header { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 9px; line-height: 1.2; }
+.pan__val { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 9px; font-weight: 700; color: var(--text); }
 
 .strip--horizontal { flex-direction: column; justify-content: center; gap: 2px; height: 100%; padding: 2px 8px 4px 6px; background: transparent; border: 0; }
 .strip--horizontal .strip__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -925,6 +927,389 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   background: color-mix(in srgb, var(--accent) 35%, transparent);
   border-left: 2px solid var(--accent);
   border-right: 2px solid var(--accent);
+}
+
+/* ---------- modal y visor de letras sincronizadas (lrc / obs) ---------- */
+.lyrics-modal { max-width: 720px; }
+.lyrics-modal__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+.lyrics-modal__tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .15s ease;
+}
+.lyrics-modal__tab:hover { color: var(--text); }
+.lyrics-modal__tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.lyrics-editor-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lyrics-editor-tab__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lyrics-modal__textarea {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 180px;
+  max-height: 380px;
+  white-space: pre;
+}
+/* Calibración de timing / Latencia de audio */
+.lyrics-timing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.lyrics-timing-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.lyrics-timing-card__badge {
+  font-size: 11px;
+  color: var(--accent);
+}
+.lyrics-timing-card__desc {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.lyrics-timing-card__presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lyrics-modal__stats {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Transmisión a OBS */
+.lyrics-obs-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lyrics-obs-tab__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-inset));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 4px;
+}
+.lyrics-obs-tab__buttons {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.lyrics-links-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.lyrics-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+}
+.lyrics-link-row__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lyrics-obs-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.lyrics-preview-box {
+  min-height: 90px;
+  padding: 16px;
+  border-radius: 4px;
+  border: 1px dashed var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s ease;
+}
+.lyrics-obs-guide {
+  padding: 10px 14px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* ---------- Visor Standalone de Letras (OBS / Pantallas) ---------- */
+.lyrics-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Figtree', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  box-sizing: border-box;
+}
+.lyrics-stage--clean {
+  cursor: default;
+}
+
+/* Temas del visor */
+.lyrics-stage--transparent {
+  background: transparent !important;
+  color: #ffffff;
+}
+.lyrics-stage--dark {
+  background: #0b0d10;
+  color: #f0f3f6;
+}
+.lyrics-stage--chroma-green {
+  background: #00ff00 !important;
+  color: #ffffff;
+}
+.lyrics-stage--black {
+  background: #000000 !important;
+  color: #ffffff;
+}
+
+/* Contenido de Letras según Modo */
+.lyrics-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.lyrics-empty__card {
+  max-width: 420px;
+  padding: 28px;
+  background: rgba(24, 28, 36, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.lyrics-empty__icon {
+  color: #ff7a2f;
+  margin-bottom: 12px;
+}
+.lyrics-empty__card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #fff;
+}
+.lyrics-empty__card p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #aaa;
+  line-height: 1.5;
+}
+.lyrics-empty__hint {
+  font-size: 11px !important;
+  color: #777 !important;
+}
+
+/* Modo Lower Third */
+.lyrics-lowerthird {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 32px 42px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.lyrics-lowerthird__plate {
+  max-width: 1300px;
+  width: 100%;
+  text-align: center;
+  padding: 14px 28px;
+  background: rgba(10, 12, 16, 0.65);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+.lyrics-stage--transparent .lyrics-lowerthird__plate {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.75) 100%);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.lyrics-lowerthird__current {
+  font-weight: 800;
+  line-height: 1.25;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 18px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 0, 0, 0.6);
+  letter-spacing: .01em;
+}
+.lyrics-lowerthird__next {
+  font-weight: 500;
+  opacity: 0.7;
+  margin-top: 6px;
+  line-height: 1.3;
+  color: #e0e5eb;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+}
+
+/* Modo Teleprompter */
+.lyrics-prompter {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding: 40px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.lyrics-prompter::-webkit-scrollbar { display: none; }
+.lyrics-prompter__spacer {
+  height: 42vh;
+  flex: none;
+}
+.lyrics-prompter__line {
+  padding: 14px 24px;
+  max-width: 1100px;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.4;
+  opacity: 0.35;
+  transition: all .25s ease;
+  border-radius: 8px;
+}
+.lyrics-prompter__line--current {
+  opacity: 1 !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  transform: scale(1.06);
+  text-shadow: 0 0 24px rgba(255, 122, 47, 0.6), 0 2px 6px rgba(0, 0, 0, 0.9);
+  background: rgba(255, 122, 47, 0.15);
+  border: 1px solid rgba(255, 122, 47, 0.3);
+}
+.lyrics-prompter__line--past {
+  opacity: 0.22;
+}
+
+/* Modo Pantalla Completa / Proyector */
+.lyrics-fullscreen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+  text-align: center;
+}
+.lyrics-fullscreen__content {
+  max-width: 1400px;
+  width: 100%;
+}
+.lyrics-fullscreen__current {
+  font-weight: 800;
+  line-height: 1.25;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 24px rgba(0, 0, 0, 0.8);
+}
+.lyrics-fullscreen__next {
+  font-weight: 500;
+  opacity: 0.6;
+  margin-top: 16px;
+  line-height: 1.3;
+  color: #d1d7e0;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* Variaciones de tamaño de fuente */
+.lyrics-stage--font-normal .lyrics-lowerthird__current,
+.lyrics-stage--font-normal .lyrics-fullscreen__current {
+  font-size: clamp(20px, 3.2vw, 32px);
+}
+.lyrics-stage--font-normal .lyrics-lowerthird__next,
+.lyrics-stage--font-normal .lyrics-fullscreen__next {
+  font-size: clamp(14px, 2.2vw, 22px);
+}
+.lyrics-stage--font-normal .lyrics-prompter__line {
+  font-size: clamp(18px, 2.8vw, 28px);
+}
+
+.lyrics-stage--font-large .lyrics-lowerthird__current,
+.lyrics-stage--font-large .lyrics-fullscreen__current {
+  font-size: clamp(26px, 4.2vw, 44px);
+}
+.lyrics-stage--font-large .lyrics-lowerthird__next,
+.lyrics-stage--font-large .lyrics-fullscreen__next {
+  font-size: clamp(18px, 2.8vw, 28px);
+}
+.lyrics-stage--font-large .lyrics-prompter__line {
+  font-size: clamp(24px, 3.6vw, 38px);
+}
+
+.lyrics-stage--font-xlarge .lyrics-lowerthird__current,
+.lyrics-stage--font-xlarge .lyrics-fullscreen__current {
+  font-size: clamp(34px, 5.5vw, 62px);
+}
+.lyrics-stage--font-xlarge .lyrics-lowerthird__next,
+.lyrics-stage--font-xlarge .lyrics-fullscreen__next {
+  font-size: clamp(22px, 3.5vw, 36px);
+}
+.lyrics-stage--font-xlarge .lyrics-prompter__line {
+  font-size: clamp(30px, 4.5vw, 48px);
+}
+
+.lyrics-lowerthird__instrumental,
+.lyrics-fullscreen__instrumental,
+.lyrics-prompter__instrumental {
+  font-style: italic;
+  opacity: 0.85;
+  color: var(--accent, #ff7a2f);
 }
 
 @media (max-width: 760px) {

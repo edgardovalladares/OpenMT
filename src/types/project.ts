@@ -1,5 +1,6 @@
 import type { ThemeId, MixerPosition } from '../store/useDaw';
 import type { KeyInfo } from '../audio/music';
+import type { LyricsData } from './lyrics';
 
 export interface SongSection {
   id: string;
@@ -56,6 +57,7 @@ export interface DawProject {
   };
   tracks: ProjectTrackData[];
   sections?: SongSection[];
+  lyrics?: LyricsData;
 }
 
 export interface ProjectSummary {

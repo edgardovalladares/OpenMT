@@ -10,10 +10,12 @@ import { MixerBottom } from './components/MixerBottom';
 import { ExportModal } from './components/ExportModal';
 import { SavedProjectsModal } from './components/SavedProjectsModal';
 import { RelinkModal } from './components/RelinkModal';
+import { LyricsModal } from './components/LyricsModal';
+import { LyricsView } from './components/LyricsView';
 
 const AUDIO_EXT = /\.(mp3|wav|flac|ogg|oga|m4a|aac|opus|webm)$/i;
 
-export default function App() {
+function DawApp() {
   const theme = useDaw((s) => s.theme);
   const projectName = useDaw((s) => s.projectName);
   const mixerPosition = useDaw((s) => s.mixerPosition);
@@ -27,6 +29,7 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSavedProjectsOpen, setIsSavedProjectsOpen] = useState(false);
   const [isRelinkOpen, setIsRelinkOpen] = useState(false);
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
 
   useHotkeys();
   useEffect(() => { engine.init(); }, []); // el contexto nace "suspended"; se reanuda con el primer gesto
@@ -61,9 +64,10 @@ export default function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onOpenSavedProjects={() => setIsSavedProjectsOpen(true)}
         onOpenRelink={() => setIsRelinkOpen(true)}
+        onOpenLyrics={() => setIsLyricsOpen(true)}
         narrow={narrow}
       />
-      <TopBar />
+      <TopBar onOpenLyrics={() => setIsLyricsOpen(true)} />
       <Stage layout={layout} />
       {layout === 'bottom' && hasTracks && <MixerBottom />}
       {dragging && <div className="dropzone">Suelta el audio aquí</div>}
@@ -82,6 +86,23 @@ export default function App() {
         isOpen={isRelinkOpen}
         onClose={() => setIsRelinkOpen(false)}
       />
+      <LyricsModal
+        isOpen={isLyricsOpen}
+        onClose={() => setIsLyricsOpen(false)}
+      />
     </div>
   );
+}
+
+export default function App() {
+  const isLyricsView =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('view=lyrics') ||
+      window.location.hash.includes('lyrics'));
+
+  if (isLyricsView) {
+    return <LyricsView />;
+  }
+
+  return <DawApp />;
 }

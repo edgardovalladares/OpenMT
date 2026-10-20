@@ -30,11 +30,12 @@
 5. [Compatibilidad de Navegadores y Sistemas](#-compatibilidad-de-navegadores-y-sistemas)
 6. [Instalación y Ejecución en Local](#-instalación-y-ejecución-en-local)
 7. [Guía de Uso Paso a Paso](#-guía-de-uso-paso-a-paso)
-8. [Atajos de Teclado](#-atajos-de-teclado)
-9. [Estructura del Proyecto](#-estructura-del-proyecto)
-10. [Exportación y Renderizado](#-exportación-y-renderizado)
-11. [Privacidad y Seguridad](#-privacidad-y-seguridad)
-12. [Licencia y Créditos](#-licencia-y-créditos)
+8. [Letras Sincronizadas (LRC / OBS)](#-11-letras-sincronizadas-lrc-y-transmisión-en-vivo-para-obs-y-pantallas)
+9. [Atajos de Teclado](#-atajos-de-teclado)
+10. [Estructura del Proyecto](#-estructura-del-proyecto)
+11. [Exportación y Renderizado](#-exportación-y-renderizado)
+12. [Privacidad y Seguridad](#-privacidad-y-seguridad)
+13. [Licencia y Créditos](#-licencia-y-créditos)
 
 ---
 
@@ -53,8 +54,8 @@
 - **Capacidad ampliada:** Carga y reproduce de forma sincronizada hasta **20 pistas estéreo simultáneas**.
 - **Amplio soporte de formatos:** Compatible con `WAV`, `MP3`, `FLAC`, `OGG`, `M4A`, `AAC`, `Opus` y más.
 - **Tira de canal completa por pista:**
-  - Fader de volumen analógico calibrado de `-60 dB` a `+6 dB` con tope de ganancia unitaria en `0 dB`.
-  - Control de balance estéreo (Pan `-100 % L` a `+100 % R`).
+  - Fader de volumen analógico calibrado de `-60 dB` a `+6 dB` con tope de ganancia unitaria en `0 dB` (doble clic para volver a 0 dB).
+  - Control de balance estéreo (Pan `-100 % L` a `+100 % R`) con **efecto imán en el centro** (snapping magnético automático a `C`), indicador visual (`C`, `L50`, `R25`) y restablecimiento a centro con **doble clic**.
   - Botones dedicados de **Mute (M)** y **Solo (S)** con lógica excluyente inteligente.
   - Indicadores de nivel estéreo independientes (L/R) renderizados en `<canvas>` a **60 fps** con memoria de pico (*peak-hold*) y advertencia de saturación (*clipping*).
 
@@ -113,6 +114,20 @@
 - **Disposiciones flexibles de faders:** Vista de sesión (faders abajo) o vista de arreglo (faders a la izquierda de cada pista).
 - **Tipografía local Figtree:** Tipografía moderna instalada en el paquete localmente, preservando números monoespaciados tabulares en relojes y medidores.
 - **Cero emojis:** Iconografía vectorial profesional con `lucide-react`.
+
+### 🎤 11. Letras Sincronizadas (LRC) y Transmisión en Vivo para OBS y Pantallas
+- **Soporte de formato estándar LRC (.lrc / .txt):** Carga archivos de letra sincronizados o pégalos directamente con marcas de tiempo `[mm:ss.xx]`.
+- **Ajuste fino de sincronización (Offset):** Adelanta o retrasa la letra (+/- 0.2s, +/- 1.0s) para sincronización milimétrica con la banda o secuencia.
+- **Sincronización en tiempo real:** Comunicación instantánea con **BroadcastChannel API** y eventos de almacenamiento entre pestañas y aplicaciones.
+- **Ventana emergente y enlace para OBS Studio:**
+  - Abre un visor limpio e independiente o copia un enlace directo para una **Fuente de Navegador (Browser Source)** en OBS Studio (`?view=lyrics`).
+  - **3 Modos de visualización:**
+    - `Tercio inferior (Lower Third)`: 2 líneas al fondo con alto contraste y sombra nítida, diseñado para flotar sobre cámaras en vivo.
+    - `Teleprompter`: Desplazamiento continuo que mantiene la línea activa centrada y destacada para músicos en escenario.
+    - `Pantalla completa`: Modo proyector / auditorio tradicional con texto grande.
+  - **4 Fondos seleccionables:** `Transparente` (nativo para OBS), `Oscuro elegante`, `Croma verde (#00FF00)` y `Negro puro`.
+  - Controles flotantes con auto-ocultación automática para una captura 100 % limpia.
+  - Se guarda automáticamente junto con tu proyecto en formato JSON o memoria local.
 
 ---
 

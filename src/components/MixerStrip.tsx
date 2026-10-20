@@ -143,11 +143,37 @@ export function MixerStrip({ id, orientation }: { id: string; orientation: Orien
       <button className="btn btn--s" aria-pressed={t.solo} onClick={() => toggleSolo(id)} aria-label={`Solo ${t.name}`}>S</button>
     </div>
   );
+  const panLabel =
+    t.pan === 0 ? 'C' : t.pan < 0 ? `L${Math.round(Math.abs(t.pan) * 100)}` : `R${Math.round(t.pan * 100)}`;
+
   const pan = (
-    <label className="pan">
-      <span>PAN</span>
-      <input type="range" min={-1} max={1} step={0.01} value={t.pan} aria-label={`Pan ${t.name}`}
-        onChange={(e) => setPan(id, Number(e.target.value))} onDoubleClick={() => setPan(id, 0)} />
+    <label
+      className="pan"
+      onDoubleClick={() => setPan(id, 0)}
+      title="Panorama: doble clic para centrar"
+    >
+      <div className="pan__header">
+        <span>PAN</span>
+        <span className="pan__val">{panLabel}</span>
+      </div>
+      <input
+        type="range"
+        min={-1}
+        max={1}
+        step={0.01}
+        value={t.pan}
+        aria-label={`Pan ${t.name}`}
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          // Efecto imán en el centro: valores cercanos a 0 (-0.07 a +0.07) se ajustan automáticamente a 0
+          const snapped = Math.abs(raw) <= 0.07 ? 0 : raw;
+          setPan(id, snapped);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setPan(id, 0);
+        }}
+      />
     </label>
   );
   const body = (

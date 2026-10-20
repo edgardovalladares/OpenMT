@@ -2,6 +2,11 @@ import { useDaw } from '../store/useDaw';
 import { totalSemitones } from '../store/derived';
 import { engine } from './engine';
 import { subscribeFrame } from './frameLoop';
+import {
+  broadcastTimeUpdate,
+  broadcastFullSync,
+  subscribeLyricsSync,
+} from './lyricsSync';
 
 useDaw.subscribe((s, p) => {
   if (s.tracks !== p.tracks || s.masterVolPos !== p.masterVolPos) {
@@ -19,11 +24,34 @@ useDaw.subscribe((s, p) => {
   }
 });
 
-engine.onState((transport) => useDaw.setState({ transport }));
+engine.onState((transport) => {
+  useDaw.setState({ transport });
+  broadcastTimeUpdate(engine.position, transport, engine.duration);
+});
+
+// Responder a peticiones de sincronización completa desde pestañas/OBS
+subscribeLyricsSync((msg) => {
+  if (msg.type === 'REQUEST_FULL_SYNC') {
+    const s = useDaw.getState();
+    broadcastFullSync({
+      rawLrc: s.lyrics.rawLrc,
+      offsetMs: s.lyrics.offsetMs,
+      position: engine.position,
+      transport: engine.transport,
+      duration: engine.duration,
+      projectName: s.projectName,
+    });
+  }
+});
 
 let lastJumpPos = -1;
 
 subscribeFrame(() => {
+  // Transmitir tiempo de reproducción a ventanas externas / OBS en tiempo real
+  if (engine.transport === 'playing') {
+    broadcastTimeUpdate(engine.position, engine.transport, engine.duration);
+  }
+
   if (engine.transport !== 'playing') {
     lastJumpPos = -1;
     return;

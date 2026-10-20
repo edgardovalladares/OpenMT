@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Undo2, Redo2, Clock as ClockIcon } from 'lucide-react';
+import { Undo2, Redo2, Clock as ClockIcon, FileText } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import { engine } from '../audio/engine';
 import { subscribeFrame } from '../audio/frameLoop';
@@ -19,7 +19,7 @@ function Clock() {
   return <span className="readout" ref={ref}>0:00.0 / 0:00.0</span>;
 }
 
-export function TopBar() {
+export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
   const playing = useDaw((s) => s.transport === 'playing');
   const hasTracks = useDaw((s) => s.tracks.length > 0);
   const addFiles = useDaw((s) => s.addFiles);
@@ -28,6 +28,7 @@ export function TopBar() {
   const canRedo = useDaw((s) => s.canRedo);
   const undo = useDaw((s) => s.undo);
   const redo = useDaw((s) => s.redo);
+  const hasLyrics = useDaw((s) => Boolean(s.lyrics.rawLrc.trim()));
 
   const theme = useDaw((s) => s.theme);
   const queuedSectionId = useDaw((s) => s.queuedSectionId);
@@ -113,6 +114,26 @@ export function TopBar() {
 
       <TempoPanel />
       <KeyPanel />
+
+      {/* Panel Letras LRC / OBS */}
+      <section className="panel" aria-label="Letras">
+        <span className="panel__label">LETRAS</span>
+        <div className="row">
+          <button
+            type="button"
+            className={`btn ${hasLyrics ? 'btn--accent' : ''}`}
+            onClick={onOpenLyrics}
+            title={
+              hasLyrics
+                ? 'Letras sincronizadas activas (clic para editar o transmitir a OBS)'
+                : 'Cargar letra sincronizada (.lrc) para OBS o pantallas'
+            }
+          >
+            <FileText size={14} />
+            <span>{hasLyrics ? 'Letras (LRC)' : 'Cargar Letra'}</span>
+          </button>
+        </div>
+      </section>
 
       {/* Indicador visible cuando una sección está en cola para saltar */}
       {queuedSec && (

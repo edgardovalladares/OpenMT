@@ -14,6 +14,7 @@ import {
   Undo2,
   Redo2,
   Sparkles,
+  Tv,
 } from 'lucide-react';
 import { useDaw, type ThemeId } from '../store/useDaw';
 import {
@@ -26,6 +27,7 @@ interface MenuBarProps {
   onOpenExport: () => void;
   onOpenSavedProjects: () => void;
   onOpenRelink: () => void;
+  onOpenLyrics: () => void;
   narrow: boolean;
 }
 
@@ -33,6 +35,7 @@ export function MenuBar({
   onOpenExport,
   onOpenSavedProjects,
   onOpenRelink,
+  onOpenLyrics,
   narrow,
 }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<'archivo' | 'edicion' | 'ventana' | null>(null);
@@ -378,6 +381,36 @@ export function MenuBar({
               >
                 <RotateCcw size={14} className="menu-item__icon" />
                 <span>Restablecer Tempo y Tono</span>
+              </button>
+
+              <div className="menu-divider" />
+
+              <span className="menu-header">Letras en Vivo (LRC)</span>
+              <button
+                type="button"
+                className="menu-item"
+                onClick={() => {
+                  onOpenLyrics();
+                  setActiveMenu(null);
+                }}
+              >
+                <FileText size={14} className="menu-item__icon" />
+                <span>Letras Sincronizadas (LRC / OBS)…</span>
+              </button>
+              <button
+                type="button"
+                className="menu-item"
+                onClick={() => {
+                  window.open(
+                    `${window.location.origin}${window.location.pathname}?view=lyrics&theme=transparent&mode=lowerthird`,
+                    'OpenMT_Lyrics',
+                    'width=980,height=600,menubar=no,toolbar=no',
+                  );
+                  setActiveMenu(null);
+                }}
+              >
+                <Tv size={14} className="menu-item__icon" />
+                <span>Abrir Visor para OBS / Pantallas</span>
               </button>
             </div>
           )}
