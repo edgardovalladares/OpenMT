@@ -1150,6 +1150,16 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   justify-content: center;
   transition: all .2s ease;
 }
+.lyrics-preview-box.lyrics-stage--transparent {
+  background-color: transparent !important;
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
 .lyrics-obs-guide {
   padding: 10px 12px;
   background: var(--bg-inset);
@@ -1175,11 +1185,47 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   cursor: default;
 }
 
+/* Soporte para visor de letras transparente en OBS Studio y navegadores */
+html.is-lyrics-view,
+body.is-lyrics-view,
+#root.is-lyrics-view,
+body.is-lyrics-view #root {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+html:has(.lyrics-stage--transparent),
+body:has(.lyrics-stage--transparent),
+#root:has(.lyrics-stage--transparent) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
 /* Temas del visor */
 .lyrics-stage--transparent {
   background: transparent !important;
+  background-color: transparent !important;
   color: #ffffff;
 }
+.lyrics-stage--transparent .lyrics-lowerthird__plate {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.lyrics-stage--transparent .lyrics-lowerthird__current {
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 0, 0, 0.85);
+}
+.lyrics-stage--transparent .lyrics-lowerthird__next {
+  color: #e5e9f0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.85);
+}
+.lyrics-stage--transparent .lyrics-empty__card {
+  display: none !important;
+}
+
 .lyrics-stage--dark {
   background: #0b0d10;
   color: #f0f3f6;
@@ -1253,10 +1299,6 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-}
-.lyrics-stage--transparent .lyrics-lowerthird__plate {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.75) 100%);
-  border-color: rgba(255, 255, 255, 0.15);
 }
 .lyrics-lowerthird__current {
   font-weight: 800;

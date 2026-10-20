@@ -57,6 +57,58 @@ export function LyricsView() {
 
   const prompterContainerRef = useRef<HTMLDivElement>(null);
 
+  // Asegurar fondo 100 % transparente en el documento para OBS Studio y navegadores
+  useEffect(() => {
+    document.documentElement.classList.add('is-lyrics-view');
+    document.body.classList.add('is-lyrics-view');
+    const rootEl = document.getElementById('root');
+    if (rootEl) rootEl.classList.add('is-lyrics-view');
+
+    const applyThemeBackground = () => {
+      if (theme === 'transparent') {
+        document.documentElement.style.setProperty('background', 'transparent', 'important');
+        document.documentElement.style.setProperty('background-color', 'transparent', 'important');
+        document.body.style.setProperty('background', 'transparent', 'important');
+        document.body.style.setProperty('background-color', 'transparent', 'important');
+        if (rootEl) {
+          rootEl.style.setProperty('background', 'transparent', 'important');
+          rootEl.style.setProperty('background-color', 'transparent', 'important');
+        }
+      } else if (theme === 'chroma-green') {
+        document.documentElement.style.setProperty('background', '#00ff00', 'important');
+        document.documentElement.style.setProperty('background-color', '#00ff00', 'important');
+        document.body.style.setProperty('background', '#00ff00', 'important');
+        document.body.style.setProperty('background-color', '#00ff00', 'important');
+      } else if (theme === 'black') {
+        document.documentElement.style.setProperty('background', '#000000', 'important');
+        document.documentElement.style.setProperty('background-color', '#000000', 'important');
+        document.body.style.setProperty('background', '#000000', 'important');
+        document.body.style.setProperty('background-color', '#000000', 'important');
+      } else if (theme === 'dark') {
+        document.documentElement.style.setProperty('background', '#0b0d10', 'important');
+        document.documentElement.style.setProperty('background-color', '#0b0d10', 'important');
+        document.body.style.setProperty('background', '#0b0d10', 'important');
+        document.body.style.setProperty('background-color', '#0b0d10', 'important');
+      }
+    };
+
+    applyThemeBackground();
+
+    return () => {
+      document.documentElement.classList.remove('is-lyrics-view');
+      document.body.classList.remove('is-lyrics-view');
+      document.documentElement.style.removeProperty('background');
+      document.documentElement.style.removeProperty('background-color');
+      document.body.style.removeProperty('background');
+      document.body.style.removeProperty('background-color');
+      if (rootEl) {
+        rootEl.classList.remove('is-lyrics-view');
+        rootEl.style.removeProperty('background');
+        rootEl.style.removeProperty('background-color');
+      }
+    };
+  }, [theme]);
+
   // Aplicar datos de sincronización recibidos por cualquier canal
   const applySyncData = (msg: Partial<LyricsSyncMessage>) => {
     if (!msg) return;

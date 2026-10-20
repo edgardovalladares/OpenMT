@@ -100,6 +100,13 @@ export default function App() {
     (window.location.search.includes('view=lyrics') ||
       window.location.hash.includes('lyrics'));
 
+  useEffect(() => {
+    if (isLyricsView) {
+      document.documentElement.classList.add('is-lyrics-view');
+      document.body.classList.add('is-lyrics-view');
+    }
+  }, [isLyricsView]);
+
   if (isLyricsView) {
     return <LyricsView />;
   }

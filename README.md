@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.0.1-blue" alt="Version 2.0.1" />
+  <img src="https://img.shields.io/badge/version-v2.0.2-blue" alt="Version 2.0.2" />
   <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Vite-8.x-purple?logo=vite" alt="Vite" />
