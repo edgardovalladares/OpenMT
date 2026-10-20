@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   Globe,
   HelpCircle,
+  Lightbulb,
+  X,
 } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import { parseLrc, SAMPLE_LRC } from '../utils/lrcParser';
@@ -147,7 +149,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
             </h2>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar">
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -256,7 +258,8 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                 </div>
 
                 <p className="lyrics-timing-card__desc">
-                  💡 Si sientes que la letra <strong>aparece antes</strong> de que el cantante pronuncie la frase, selecciona un retraso de <strong>+300ms a +500ms</strong> para compensar la latencia de hardware de audio y la articulación vocal.
+                  <Lightbulb size={13} style={{ color: 'var(--accent)', verticalAlign: -2, marginRight: 5, display: 'inline-block' }} />
+                  Si sientes que la letra <strong>aparece antes</strong> de que el cantante pronuncie la frase, selecciona un retraso de <strong>+300ms a +500ms</strong> para compensar la latencia de hardware de audio y la articulación vocal.
                 </p>
 
                 <div className="lyrics-timing-card__presets">
@@ -513,14 +516,16 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                         className={`btn btn--tiny ${options.uppercase ? 'btn--accent' : ''}`}
                         onClick={() => setLyricsOptions({ uppercase: !options.uppercase })}
                       >
-                        {options.uppercase ? '✓ MAYÚSCULAS' : 'Mayúsculas'}
+                        {options.uppercase && <Check size={11} style={{ marginRight: 4, display: 'inline-block', verticalAlign: -1 }} />}
+                        {options.uppercase ? 'MAYÚSCULAS' : 'Mayúsculas'}
                       </button>
                       <button
                         type="button"
                         className={`btn btn--tiny ${options.showNext ? 'btn--accent' : ''}`}
                         onClick={() => setLyricsOptions({ showNext: !options.showNext })}
                       >
-                        {options.showNext ? '✓ Línea Siguiente' : 'Ocultar Siguiente'}
+                        {options.showNext && <Check size={11} style={{ marginRight: 4, display: 'inline-block', verticalAlign: -1 }} />}
+                        {options.showNext ? 'Línea Siguiente' : 'Ocultar Siguiente'}
                       </button>
                     </div>
                   </div>

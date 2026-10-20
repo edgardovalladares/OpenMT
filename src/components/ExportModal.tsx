@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import { exportMix, downloadBlob, type ExportOptions } from '../audio/export/exportMix';
 import { formatTime } from '../audio/music';
@@ -63,8 +64,8 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
       <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <header className="modal__header">
           <h2 className="modal__title">Exportar Mezcla</h2>
-          <button className="icon-btn" onClick={() => !isExporting && onClose()} disabled={isExporting}>
-            ✕
+          <button className="icon-btn" onClick={() => !isExporting && onClose()} disabled={isExporting} aria-label="Cerrar">
+            <X size={16} />
           </button>
         </header>
 

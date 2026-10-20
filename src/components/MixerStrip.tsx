@@ -1,5 +1,5 @@
 import { useState, useRef, type CSSProperties } from 'react';
-import { AlertTriangle, Scissors, Lock, Unlock } from 'lucide-react';
+import { AlertTriangle, Scissors, Lock, Unlock, X } from 'lucide-react';
 import { useDaw, type TrackState } from '../store/useDaw';
 import { engine } from '../audio/engine';
 import { formatDb, posToDb } from '../audio/dbMath';
@@ -39,7 +39,7 @@ export function TrackInfo({ t }: { t: TrackState }) {
             title="Eliminar pista"
             onClick={() => removeTrack(t.id)}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 
