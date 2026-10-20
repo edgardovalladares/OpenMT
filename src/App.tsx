@@ -5,6 +5,7 @@ import { useHotkeys } from './hooks/useHotkeys';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { MenuBar } from './components/MenuBar';
 import { TopBar } from './components/TopBar';
+import { SongTabsBar } from './components/SongTabsBar';
 import { Stage } from './components/Stage';
 import { MixerBottom } from './components/MixerBottom';
 import { ExportModal } from './components/ExportModal';
@@ -68,6 +69,7 @@ function DawApp() {
         narrow={narrow}
       />
       <TopBar onOpenLyrics={() => setIsLyricsOpen(true)} />
+      <SongTabsBar onOpenLyrics={() => setIsLyricsOpen(true)} />
       <Stage layout={layout} />
       {layout === 'bottom' && hasTracks && <MixerBottom />}
       {dragging && <div className="dropzone">Suelta el audio aquí</div>}

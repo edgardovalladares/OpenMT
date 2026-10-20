@@ -10,10 +10,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.0.2-blue" alt="Version 2.0.2" />
+  <img src="https://img.shields.io/badge/version-v2.1.0-blue" alt="Version 2.1.0" />
   <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Vite-8.x-purple?logo=vite" alt="Vite" />
+  <img src="https://img.shields.io/badge/Electron-Desktop-informational?logo=electron" alt="Electron Desktop" />
   <img src="https://img.shields.io/badge/Web%20Audio%20API-Native-success" alt="Web Audio API" />
   <img src="https://img.shields.io/badge/WebAssembly-WASM-orange?logo=webassembly" alt="WebAssembly" />
   <img src="https://img.shields.io/badge/Zero%20Server-100%25%20Client--Side-green" alt="100% Client-Side" />
@@ -116,19 +117,30 @@
 - **Tipografía local Figtree:** Tipografía moderna instalada en el paquete localmente, preservando números monoespaciados tabulares en relojes y medidores.
 - **Cero emojis:** Iconografía vectorial profesional con `lucide-react`.
 
-### 🎤 11. Letras Sincronizadas (LRC) y Transmisión en Vivo para OBS y Pantallas
+### 🎶 11. Gestor de Repertorio / Setlist por Pestañas (En Vivo)
+- **Múltiples canciones dentro del mismo proyecto:** Pestañas superiores para organizar tu repertorio en vivo (`Canción 1`, `Canción 2`, etc.).
+- **Gestión fluida del concierto:** Añade canciones, renómbralas con doble clic, duplícalas, reordénalas o bórralas en cualquier momento.
+- **Optimización extrema de memoria RAM y CPU:**
+  - Diseñado para que el navegador no se congele ni se sobrecargue con múltiples canciones cargadas.
+  - Al cambiar de pestaña, OpenMT desmonta y libera inmediatamente los grafos de nodos Web Audio y los procesos WASM de la canción inactiva, conservando sus buffers y configuración listos para un arranque instantáneo.
+- **Persistencia en el archivo de proyecto:** Al guardar el proyecto `.openmt`, todas las canciones del repertorio con sus pistas, letras y ajustes se exportan conjuntamente.
+
+### 🎤 12. Letras Sincronizadas (LRC), Código QR y Salida Limpia para OBS
 - **Soporte de formato estándar LRC (.lrc / .txt):** Carga archivos de letra sincronizados o pégalos directamente con marcas de tiempo `[mm:ss.xx]`.
-- **Ajuste fino de sincronización (Offset):** Adelanta o retrasa la letra (+/- 0.2s, +/- 1.0s) para sincronización milimétrica con la banda o secuencia.
-- **Sincronización en tiempo real:** Comunicación instantánea con **BroadcastChannel API** y eventos de almacenamiento entre pestañas y aplicaciones.
+- **Enlace global único para todo el setlist:** Configuras OBS Studio o las pantallas una sola vez con tu sala persistente. Al cambiar de pestaña de canción en OpenMT, las letras en OBS y celulares se actualizan automáticamente sin necesidad de tocar nada.
+- **Protección de enlace (Candado Lock / Unlock):** Bloquea la sala de transmisión para prevenir cambios accidentales o regenera una nueva sala cuando lo decidas.
+- **Generador de Código QR en vivo:**
+  - Muestra un código QR instantáneo para que vocalistas y músicos en el escenario apunten con la cámara de sus teléfonos o tablets.
+  - Modos de enlace seleccionables: **Teleprompter Móvil (WiFi)**, **OBS / Pantalla limpia** o **Enlace Remoto WebRTC**.
+- **Ajuste fino de sincronización (Offset):** Adelanta o retrasa la letra (+/- 0.2s, +/- 1.0s) con presets de latencia vocal (+300ms a +500ms).
 - **Ventana emergente y enlace para OBS Studio:**
-  - Abre un visor limpio e independiente o copia un enlace directo para una **Fuente de Navegador (Browser Source)** en OBS Studio (`?view=lyrics`).
-  - **3 Modos de visualización:**
-    - `Tercio inferior (Lower Third)`: 2 líneas al fondo con alto contraste y sombra nítida, diseñado para flotar sobre cámaras en vivo.
-    - `Teleprompter`: Desplazamiento continuo que mantiene la línea activa centrada y destacada para músicos en escenario.
-    - `Pantalla completa`: Modo proyector / auditorio tradicional con texto grande.
+  - **3 Modos de visualización:** `Tercio inferior (Lower Third)`, `Teleprompter` y `Pantalla completa`.
   - **4 Fondos seleccionables:** `Transparente` (nativo para OBS), `Oscuro elegante`, `Croma verde (#00FF00)` y `Negro puro`.
-  - Controles flotantes con auto-ocultación automática para una captura 100 % limpia.
-  - Se guarda automáticamente junto con tu proyecto en formato JSON o memoria local.
+
+### 🖥️ 13. Aplicación de Escritorio Electron (.exe) y Servidor LAN Local (WiFi sin Internet)
+- **Versión nativa instalable y portable para Windows:** Empaquetado completo con Electron y electron-builder (`openmt-Setup-2.1.0.exe` y versión portable).
+- **Servidor LAN HTTP + SSE integrado:** En la aplicación de escritorio, OpenMT inicia un servidor local en el puerto `3000` y detecta tu IP de red local (ej. `http://192.168.1.X:3000`).
+- **Acceso en red local para todo el equipo:** Cualquier teléfono, tablet o computadora conectada a la misma red Wi-Fi puede escanear el QR y ver el teleprompter en tiempo real durante ensayos o conciertos sin depender de conexión a internet.
 
 ---
 
@@ -146,6 +158,9 @@
 | **Render Offline** | `OfflineAudioContext` | Nativa | Renderizado de exportación multipista a velocidad de CPU |
 | **Codificación MP3** | [@breezystack/lamejs](https://github.com/breezystack/lamejs) | `^1.2.7` | Codificador MP3 puro en JavaScript/TypeScript sin servidores |
 | **Iconografía** | [Lucide React](https://lucide.dev/) | `^1.59.0` | Íconos limpios en SVG (cero emojis) |
+| **Códigos QR** | [QRCode](https://github.com/soldair/node-qrcode) | `^1.5.4` | Generador instantáneo de códigos QR para teléfonos y tablets |
+| **Escritorio** | [Electron](https://www.electronjs.org/) | `^41.3.1` | Aplicación de escritorio multiplataforma con servidor LAN HTTP + SSE |
+| **Empaquetado .exe** | [electron-builder](https://www.electron.build/) | `^26.0.2` | Compilador de instaladores NSIS y portables para Windows x64 |
 | **Tipografía** | [@fontsource/figtree](https://fontsource.org/fonts/figtree) | `^5.3.0` | Fuente Figtree empaquetada localmente (100 % libre de CDN) |
 | **Testing** | [Vitest](https://vitest.dev/) | `^5.0.5` | Pruebas unitarias de matemáticas de dB, música y estado |
 | **Linter** | [Oxlint](https://oxc.rs/) | `^1.88.0` | Análisis estático de código ultra veloz en Rust |
@@ -244,6 +259,16 @@ Generará la carpeta optimizada y minificada `dist/` lista para ser servida en c
 ```bash
 npm run preview
 ```
+
+### 8. Ejecutar como Aplicación de Escritorio (Electron)
+```bash
+# Iniciar Electron en modo desarrollo
+npm run electron:dev
+
+# Generar instalador de Windows (.exe) y versión Portable
+npm run dist:exe
+```
+Los archivos ejecutables `.exe` (instalador NSIS y versión portable independiente) se generarán automáticamente en la carpeta `release/`.
 
 ---
 

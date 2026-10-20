@@ -111,6 +111,12 @@ class Engine {
   getAudioBuffer(id: string): AudioBuffer | undefined { return this.audioBuffers.get(id); }
   getFileMeta(id: string) { return this.fileInfo.get(id); }
   hasTrack(id: string): boolean { return this.tracks.has(id); }
+  cloneTrackBuffer(fromId: string, toId: string) {
+    const buf = this.audioBuffers.get(fromId);
+    if (buf) this.audioBuffers.set(toId, buf);
+    const meta = this.fileInfo.get(fromId);
+    if (meta) this.fileInfo.set(toId, meta);
+  }
 
   removeTrack(id: string) {
     this.tracks.get(id)?.dispose();
@@ -131,6 +137,35 @@ class Engine {
     this.semis.clear();
     this.trims.clear();
     this.pausedPos = 0;
+  }
+
+  /**
+   * Cambia de canción activa desmontando los grafos de audio de canciones inactivas
+   * para optimizar el rendimiento y evitar consumo excesivo de memoria/CPU.
+   */
+  async switchSongTracks(
+    newTrackIds: { id: string; semitones: number; trimStart?: number; trimEnd?: number; fadeIn?: number; fadeOut?: number }[],
+  ) {
+    this.stop();
+    this.seek(0);
+    const activeIds = new Set(newTrackIds.map((t) => t.id));
+    for (const [id, track] of this.tracks.entries()) {
+      if (!activeIds.has(id)) {
+        track.dispose();
+        this.tracks.delete(id);
+      }
+    }
+    const ctx = this.init();
+    for (const t of newTrackIds) {
+      if (!this.tracks.has(t.id)) {
+        const buf = this.audioBuffers.get(t.id);
+        if (buf) {
+          const track = new Track(ctx, t.id, buf.duration, this.master);
+          await track.load(buf);
+          this.tracks.set(t.id, track);
+        }
+      }
+    }
   }
 
   meterSource(id: string): MeterSource | null { return this.tracks.get(id)?.meter ?? null; }

@@ -151,4 +151,52 @@ describe('useDaw store improvements', () => {
     // Batería Completa matches pattern
     expect(state3.tracks.find((t) => t.id === 't-drums')?.pitchLocked).toBe(true);
   });
+
+  it('manages song setlist tabs (add, select, rename, duplicate, remove, reorder)', async () => {
+    const state = useDaw.getState();
+    expect(state.songs).toHaveLength(1);
+    expect(state.songs[0].name).toBe('Canción 1');
+
+    // Rename current song
+    state.renameSong(state.activeSongId, 'Gracia Sublime');
+    expect(useDaw.getState().songs[0].name).toBe('Gracia Sublime');
+
+    // Set lyrics on song 1
+    state.setLyrics('[00:10.00] Verso 1 Cancion 1', 200);
+    expect(useDaw.getState().lyrics.rawLrc).toContain('Verso 1 Cancion 1');
+
+    // Add Song 2
+    const song2Id = state.addSong('Hermoso Nombre');
+    const s2 = useDaw.getState();
+    expect(s2.songs).toHaveLength(2);
+    expect(s2.activeSongId).toBe(song2Id);
+    expect(s2.songs[1].name).toBe('Hermoso Nombre');
+    // Song 2 starts with fresh lyrics
+    expect(s2.lyrics.rawLrc).toBe('');
+
+    // Set lyrics on song 2
+    s2.setLyrics('[00:15.00] Verso 1 Cancion 2', 400);
+    expect(useDaw.getState().lyrics.rawLrc).toContain('Verso 1 Cancion 2');
+
+    // Switch back to Song 1
+    const song1Id = s2.songs[0].id;
+    await s2.selectSong(song1Id);
+    const s1Back = useDaw.getState();
+    expect(s1Back.activeSongId).toBe(song1Id);
+    expect(s1Back.lyrics.rawLrc).toContain('Verso 1 Cancion 1');
+    expect(s1Back.lyrics.offsetMs).toBe(200);
+
+    // Duplicate Song 1
+    s1Back.duplicateSong(song1Id);
+    expect(useDaw.getState().songs).toHaveLength(3);
+    expect(useDaw.getState().songs[2].name).toBe('Gracia Sublime (Copia)');
+
+    // Reorder songs
+    useDaw.getState().reorderSongs(2, 0);
+    expect(useDaw.getState().songs[0].name).toBe('Gracia Sublime (Copia)');
+
+    // Remove song
+    useDaw.getState().removeSong(useDaw.getState().songs[0].id);
+    expect(useDaw.getState().songs).toHaveLength(2);
+  });
 });

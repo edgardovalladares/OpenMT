@@ -5,6 +5,54 @@ export const CHANNEL_NAME = 'openmt_lyrics_channel';
 export const STORAGE_KEY = 'openmt_lyrics_state';
 export const LOCAL_API_SYNC = '/api/lyrics/sync';
 export const LOCAL_API_EVENTS = '/api/lyrics/events';
+export const ROOM_KEY = 'openmt_persistent_room';
+export const ROOM_LOCKED_KEY = 'openmt_room_locked';
+
+export function getPersistentRoom(): string {
+  if (typeof window === 'undefined') return 'openmt-live-default';
+  try {
+    let r = localStorage.getItem(ROOM_KEY);
+    if (!r) {
+      r = `openmt-live-${Math.random().toString(36).substring(2, 8)}`;
+      localStorage.setItem(ROOM_KEY, r);
+    }
+    return r;
+  } catch {
+    return 'openmt-live-default';
+  }
+}
+
+export function isRoomLocked(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const val = localStorage.getItem(ROOM_LOCKED_KEY);
+    // Por defecto bloqueado para evitar tener que cambiar el enlace en OBS
+    return val === null ? true : val === 'true';
+  } catch {
+    return true;
+  }
+}
+
+export function setRoomLocked(locked: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(ROOM_LOCKED_KEY, String(locked));
+  } catch {
+    // ignore
+  }
+}
+
+export function regeneratePersistentRoom(): string {
+  if (typeof window === 'undefined') return getPersistentRoom();
+  try {
+    const newRoom = `openmt-live-${Math.random().toString(36).substring(2, 8)}`;
+    localStorage.setItem(ROOM_KEY, newRoom);
+    setActiveRoom(newRoom);
+    return newRoom;
+  } catch {
+    return getPersistentRoom();
+  }
+}
 
 let channel: BroadcastChannel | null = null;
 try {
@@ -15,7 +63,7 @@ try {
   channel = null;
 }
 
-let activeRoom: string | null = null;
+let activeRoom: string | null = typeof window !== 'undefined' ? getPersistentRoom() : null;
 let lastSyncPostTime = 0;
 let lastTimeBroadcast = 0;
 

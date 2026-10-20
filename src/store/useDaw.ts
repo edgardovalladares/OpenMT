@@ -6,7 +6,7 @@ import { UNITY_POS } from '../audio/dbMath';
 import type { KeyInfo } from '../audio/music';
 import type { DawProject, ProjectTrackData, SongSection } from '../types/project';
 import type { LyricsData, LyricsDisplayOptions } from '../types/lyrics';
-import { broadcastLyricsUpdate } from '../audio/lyricsSync';
+import { broadcastLyricsUpdate, broadcastTimeUpdate } from '../audio/lyricsSync';
 import { selectRef } from './derived';
 
 export const MAX_TRACKS = 20;
@@ -65,6 +65,24 @@ export interface HistorySnapshot {
   sections: SongSection[];
 }
 
+export interface SongTabItem {
+  id: string;
+  name: string;
+  tracks: TrackState[];
+  refTrackId: string | null;
+  masterVolPos: number;
+  tempoRatio: number;
+  masterSemitones: number;
+  masterCents: number;
+  keyLock: boolean;
+  sections: SongSection[];
+  activeSectionId: string | null;
+  loopSectionId: string | null;
+  queuedSectionId: string | null;
+  lyrics: LyricsData;
+  zoom: number;
+}
+
 export interface DawState {
   projectId: string;
   projectName: string;
@@ -78,6 +96,16 @@ export interface DawState {
   masterCents: number;      // -50 – +50
   keyLock: boolean;
   transport: TransportState;
+
+  // Canciones y Setlist en Vivo (Pestañas)
+  songs: SongTabItem[];
+  activeSongId: string;
+  addSong(name?: string): string;
+  selectSong(id: string): Promise<void>;
+  renameSong(id: string, name: string): void;
+  removeSong(id: string): void;
+  reorderSongs(fromIndex: number, toIndex: number): void;
+  duplicateSong(id: string): void;
 
   // Zoom
   zoom: number; // 1 to 5
@@ -153,6 +181,25 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 let undoStack: HistorySnapshot[] = [];
 let redoStack: HistorySnapshot[] = [];
 
+const initialSongId = 'song-1';
+const initialSong: SongTabItem = {
+  id: initialSongId,
+  name: 'Canción 1',
+  tracks: [],
+  refTrackId: null,
+  masterVolPos: UNITY_POS,
+  tempoRatio: 1,
+  masterSemitones: 0,
+  masterCents: 0,
+  keyLock: true,
+  sections: [],
+  activeSectionId: null,
+  loopSectionId: null,
+  queuedSectionId: null,
+  lyrics: { rawLrc: '', offsetMs: 350 },
+  zoom: 1,
+};
+
 function makeSnapshot(s: DawState): HistorySnapshot {
   return {
     tracks: s.tracks.map((t) => ({
@@ -201,6 +248,212 @@ export const useDaw = create<DawState>()((set, get) => {
     masterCents: 0,
     keyLock: true,
     transport: 'stopped',
+
+    // Canciones y Setlist en Vivo (Pestañas)
+    songs: [initialSong],
+    activeSongId: initialSongId,
+
+    addSong: (name?: string) => {
+      const s = get();
+      const nextNum = s.songs.length + 1;
+      const songName = name?.trim() || `Canción ${nextNum}`;
+      const newId = crypto.randomUUID();
+      const newSong: SongTabItem = {
+        id: newId,
+        name: songName,
+        tracks: [],
+        refTrackId: null,
+        masterVolPos: UNITY_POS,
+        tempoRatio: 1,
+        masterSemitones: 0,
+        masterCents: 0,
+        keyLock: true,
+        sections: [],
+        activeSectionId: null,
+        loopSectionId: null,
+        queuedSectionId: null,
+        zoom: 1,
+        lyrics: { rawLrc: '', offsetMs: 350 },
+      };
+
+      const updatedSongs = s.songs.map((song) => {
+        if (song.id === s.activeSongId) {
+          return {
+            ...song,
+            tracks: s.tracks,
+            refTrackId: s.refTrackId,
+            masterVolPos: s.masterVolPos,
+            tempoRatio: s.tempoRatio,
+            masterSemitones: s.masterSemitones,
+            masterCents: s.masterCents,
+            keyLock: s.keyLock,
+            sections: s.sections,
+            activeSectionId: s.activeSectionId,
+            loopSectionId: s.loopSectionId,
+            queuedSectionId: s.queuedSectionId,
+            zoom: s.zoom,
+            lyrics: s.lyrics,
+          };
+        }
+        return song;
+      });
+
+      set({
+        songs: [...updatedSongs, newSong],
+        activeSongId: newId,
+        tracks: [],
+        refTrackId: null,
+        masterVolPos: UNITY_POS,
+        tempoRatio: 1,
+        masterSemitones: 0,
+        masterCents: 0,
+        keyLock: true,
+        sections: [],
+        activeSectionId: null,
+        loopSectionId: null,
+        queuedSectionId: null,
+        zoom: 1,
+        lyrics: { rawLrc: '', offsetMs: 350 },
+        transport: 'stopped',
+        canUndo: false,
+        canRedo: false,
+      });
+
+      engine.clear();
+      broadcastLyricsUpdate('', 350, songName, s.lyricsOptions);
+      broadcastTimeUpdate(0, 'stopped', 0);
+      return newId;
+    },
+
+    selectSong: async (targetId: string) => {
+      const s = get();
+      if (s.activeSongId === targetId) return;
+      const targetSong = s.songs.find((item) => item.id === targetId);
+      if (!targetSong) return;
+
+      // 1. Guardar canción actual
+      const updatedSongs = s.songs.map((song) => {
+        if (song.id === s.activeSongId) {
+          return {
+            ...song,
+            tracks: s.tracks,
+            refTrackId: s.refTrackId,
+            masterVolPos: s.masterVolPos,
+            tempoRatio: s.tempoRatio,
+            masterSemitones: s.masterSemitones,
+            masterCents: s.masterCents,
+            keyLock: s.keyLock,
+            sections: s.sections,
+            activeSectionId: s.activeSectionId,
+            loopSectionId: s.loopSectionId,
+            queuedSectionId: s.queuedSectionId,
+            zoom: s.zoom,
+            lyrics: s.lyrics,
+          };
+        }
+        return song;
+      });
+
+      // 2. Desmontar nodos de audio inactivos y activar los de la nueva canción
+      await engine.switchSongTracks(
+        targetSong.tracks.map((t) => ({
+          id: t.id,
+          semitones: t.semitones,
+          trimStart: t.trimStart,
+          trimEnd: t.trimEnd,
+          fadeIn: t.fadeIn,
+          fadeOut: t.fadeOut,
+        })),
+      );
+
+      // 3. Activar nuevo estado en Zustand
+      set({
+        songs: updatedSongs,
+        activeSongId: targetId,
+        tracks: targetSong.tracks,
+        refTrackId: targetSong.refTrackId,
+        masterVolPos: targetSong.masterVolPos,
+        tempoRatio: targetSong.tempoRatio,
+        masterSemitones: targetSong.masterSemitones,
+        masterCents: targetSong.masterCents,
+        keyLock: targetSong.keyLock,
+        sections: targetSong.sections,
+        activeSectionId: targetSong.activeSectionId,
+        loopSectionId: targetSong.loopSectionId,
+        queuedSectionId: targetSong.queuedSectionId,
+        zoom: targetSong.zoom ?? 1,
+        lyrics: targetSong.lyrics ?? { rawLrc: '', offsetMs: 350 },
+        transport: 'stopped',
+        canUndo: false,
+        canRedo: false,
+      });
+
+      // 4. Aplicar mezcla y afinación
+      engine.applyMix(targetSong.tracks, targetSong.masterVolPos);
+      engine.applyTrims(targetSong.tracks);
+      engine.applyPitchTempo(
+        targetSong.tempoRatio,
+        targetSong.tracks.map((t) => ({ id: t.id, semitones: t.semitones })),
+      );
+
+      // 5. Emitir la letra de la nueva canción de inmediato por el enlace global
+      const activeLyrics = targetSong.lyrics ?? { rawLrc: '', offsetMs: 350 };
+      broadcastLyricsUpdate(activeLyrics.rawLrc, activeLyrics.offsetMs, targetSong.name, s.lyricsOptions);
+      broadcastTimeUpdate(0, 'stopped', engine.duration);
+    },
+
+    renameSong: (id: string, name: string) => {
+      const trimmed = name.trim() || 'Canción sin título';
+      set((s) => ({
+        songs: s.songs.map((item) => (item.id === id ? { ...item, name: trimmed } : item)),
+      }));
+      const s = get();
+      if (s.activeSongId === id) {
+        broadcastLyricsUpdate(s.lyrics.rawLrc, s.lyrics.offsetMs, trimmed, s.lyricsOptions);
+      }
+    },
+
+    removeSong: (id: string) => {
+      const s = get();
+      if (s.songs.length <= 1) return;
+      const filtered = s.songs.filter((item) => item.id !== id);
+      if (s.activeSongId === id) {
+        set({ songs: filtered });
+        void get().selectSong(filtered[0].id);
+      } else {
+        set({ songs: filtered });
+      }
+    },
+
+    reorderSongs: (fromIndex: number, toIndex: number) => {
+      set((s) => {
+        const next = [...s.songs];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        return { songs: next };
+      });
+    },
+
+    duplicateSong: (id: string) => {
+      const s = get();
+      const src = s.songs.find((item) => item.id === id);
+      if (!src) return;
+      const newId = crypto.randomUUID();
+      const clonedTracks = src.tracks.map((t) => {
+        const newTrackId = crypto.randomUUID();
+        engine.cloneTrackBuffer(t.id, newTrackId);
+        return { ...t, id: newTrackId };
+      });
+      const clone: SongTabItem = {
+        ...src,
+        id: newId,
+        name: `${src.name} (Copia)`,
+        tracks: clonedTracks,
+        sections: src.sections.map((sec) => ({ ...sec, id: crypto.randomUUID() })),
+      };
+      set({ songs: [...s.songs, clone] });
+      void get().selectSong(newId);
+    },
 
     // Letras sincronizadas
     lyrics: { rawLrc: '', offsetMs: 350 },
@@ -565,9 +818,29 @@ export const useDaw = create<DawState>()((set, get) => {
       engine.clear();
       undoStack = [];
       redoStack = [];
+      const newSongId = crypto.randomUUID();
+      const freshSong: SongTabItem = {
+        id: newSongId,
+        name: 'Canción 1',
+        tracks: [],
+        refTrackId: null,
+        masterVolPos: UNITY_POS,
+        tempoRatio: 1,
+        masterSemitones: 0,
+        masterCents: 0,
+        keyLock: true,
+        sections: [],
+        activeSectionId: null,
+        loopSectionId: null,
+        queuedSectionId: null,
+        lyrics: { rawLrc: '', offsetMs: 350 },
+        zoom: 1,
+      };
       set({
         projectId: crypto.randomUUID(),
         projectName: 'Nuevo Proyecto',
+        songs: [freshSong],
+        activeSongId: newSongId,
         tracks: [],
         refTrackId: null,
         masterVolPos: UNITY_POS,
@@ -580,74 +853,216 @@ export const useDaw = create<DawState>()((set, get) => {
         loopSectionId: null,
         queuedSectionId: null,
         lyrics: { rawLrc: '', offsetMs: 350 },
+        zoom: 1,
         canUndo: false,
         canRedo: false,
       });
-      broadcastLyricsUpdate('', 350, 'Nuevo Proyecto', get().lyricsOptions);
+      broadcastLyricsUpdate('', 350, 'Canción 1', get().lyricsOptions);
     },
 
     loadProject(project: DawProject) {
       engine.clear();
       undoStack = [];
       redoStack = [];
-      const tracks: TrackState[] = project.tracks.map((t: ProjectTrackData) => ({
-        id: t.id,
-        name: t.name,
-        colorIndex: t.colorIndex,
-        status: 'missing',
-        duration: t.duration,
-        peaks: null,
-        volPos: t.volPos,
-        pan: t.pan,
-        mute: t.mute,
-        solo: t.solo,
-        semitones: t.semitones,
-        bpm: t.bpm,
-        bpmConfidence: t.bpmConfidence,
-        key: t.key,
-        keyConfidence: t.keyConfidence,
-        analysis: t.bpm && t.key ? 'done' : 'pending',
-        trimStart: t.trimStart ?? 0,
-        trimEnd: t.trimEnd ?? t.duration,
-        fadeIn: t.fadeIn ?? 0,
-        fadeOut: t.fadeOut ?? 0,
-        pitchLocked: t.pitchLocked ?? false,
-        fileMeta: t.fileInfo,
-      }));
+
+      let songsList: SongTabItem[] = [];
+      if (project.songs && project.songs.length > 0) {
+        songsList = project.songs.map((song) => ({
+          id: song.id,
+          name: song.name,
+          tracks: song.tracks.map((t) => ({
+            id: t.id,
+            name: t.name,
+            colorIndex: t.colorIndex,
+            status: 'missing',
+            duration: t.duration,
+            peaks: null,
+            volPos: t.volPos,
+            pan: t.pan,
+            mute: t.mute,
+            solo: t.solo,
+            semitones: t.semitones,
+            bpm: t.bpm,
+            bpmConfidence: t.bpmConfidence,
+            key: t.key,
+            keyConfidence: t.keyConfidence,
+            analysis: t.bpm && t.key ? 'done' : 'pending',
+            trimStart: t.trimStart ?? 0,
+            trimEnd: t.trimEnd ?? t.duration,
+            fadeIn: t.fadeIn ?? 0,
+            fadeOut: t.fadeOut ?? 0,
+            pitchLocked: t.pitchLocked ?? false,
+            fileMeta: t.fileInfo,
+          })),
+          refTrackId: song.refTrackId,
+          masterVolPos: song.master?.volPos ?? UNITY_POS,
+          tempoRatio: song.master?.tempoRatio ?? 1,
+          masterSemitones: song.master?.masterSemitones ?? 0,
+          masterCents: song.master?.masterCents ?? 0,
+          keyLock: song.master?.keyLock ?? true,
+          sections: song.sections ?? [],
+          activeSectionId: song.activeSectionId ?? null,
+          loopSectionId: song.loopSectionId ?? null,
+          queuedSectionId: song.queuedSectionId ?? null,
+          lyrics: song.lyrics ?? { rawLrc: '', offsetMs: 350 },
+          zoom: song.zoom ?? 1,
+        }));
+      } else {
+        const legacyTracks: TrackState[] = (project.tracks || []).map((t) => ({
+          id: t.id,
+          name: t.name,
+          colorIndex: t.colorIndex,
+          status: 'missing',
+          duration: t.duration,
+          peaks: null,
+          volPos: t.volPos,
+          pan: t.pan,
+          mute: t.mute,
+          solo: t.solo,
+          semitones: t.semitones,
+          bpm: t.bpm,
+          bpmConfidence: t.bpmConfidence,
+          key: t.key,
+          keyConfidence: t.keyConfidence,
+          analysis: t.bpm && t.key ? 'done' : 'pending',
+          trimStart: t.trimStart ?? 0,
+          trimEnd: t.trimEnd ?? t.duration,
+          fadeIn: t.fadeIn ?? 0,
+          fadeOut: t.fadeOut ?? 0,
+          pitchLocked: t.pitchLocked ?? false,
+          fileMeta: t.fileInfo,
+        }));
+
+        songsList = [
+          {
+            id: 'song-1',
+            name: project.name || 'Canción 1',
+            tracks: legacyTracks,
+            refTrackId: project.master?.refTrackId ?? (legacyTracks[0]?.id ?? null),
+            masterVolPos: project.master?.volPos ?? UNITY_POS,
+            tempoRatio: project.master?.tempoRatio ?? 1,
+            masterSemitones: project.master?.masterSemitones ?? 0,
+            masterCents: project.master?.masterCents ?? 0,
+            keyLock: project.master?.keyLock ?? true,
+            sections: project.sections ?? [],
+            activeSectionId: null,
+            loopSectionId: null,
+            queuedSectionId: null,
+            lyrics: project.lyrics ?? { rawLrc: '', offsetMs: 350 },
+            zoom: 1,
+          },
+        ];
+      }
+
+      const activeId = project.activeSongId && songsList.some((s) => s.id === project.activeSongId)
+        ? project.activeSongId
+        : songsList[0].id;
+      const activeSong = songsList.find((s) => s.id === activeId) || songsList[0];
 
       set({
         projectId: project.id || crypto.randomUUID(),
         projectName: project.name || 'Proyecto',
-        tracks,
-        refTrackId: project.master?.refTrackId ?? (tracks[0]?.id ?? null),
         theme: project.ui?.theme ?? 'live-dark',
         mixerPosition: project.ui?.mixerPosition ?? 'bottom',
-        masterVolPos: project.master?.volPos ?? UNITY_POS,
-        tempoRatio: project.master?.tempoRatio ?? 1,
-        masterSemitones: project.master?.masterSemitones ?? 0,
-        masterCents: project.master?.masterCents ?? 0,
-        keyLock: project.master?.keyLock ?? true,
-        transport: 'stopped',
-        sections: project.sections ?? [],
-        activeSectionId: null,
-        loopSectionId: null,
-        queuedSectionId: null,
-        lyrics: project.lyrics ?? { rawLrc: '', offsetMs: 350 },
+        songs: songsList,
+        activeSongId: activeId,
+        tracks: activeSong.tracks,
+        refTrackId: activeSong.refTrackId,
+        masterVolPos: activeSong.masterVolPos,
+        tempoRatio: activeSong.tempoRatio,
+        masterSemitones: activeSong.masterSemitones,
+        masterCents: activeSong.masterCents,
+        keyLock: activeSong.keyLock,
+        sections: activeSong.sections,
+        activeSectionId: activeSong.activeSectionId,
+        loopSectionId: activeSong.loopSectionId,
+        queuedSectionId: activeSong.queuedSectionId,
+        lyrics: activeSong.lyrics,
         lyricsOptions: project.lyrics?.options ? { ...get().lyricsOptions, ...project.lyrics.options } : get().lyricsOptions,
+        zoom: activeSong.zoom,
+        transport: 'stopped',
         canUndo: false,
         canRedo: false,
       });
+
       broadcastLyricsUpdate(
-        project.lyrics?.rawLrc ?? '',
-        project.lyrics?.offsetMs ?? 350,
-        project.name || 'Proyecto',
-        project.lyrics?.options ?? get().lyricsOptions,
+        activeSong.lyrics.rawLrc,
+        activeSong.lyrics.offsetMs,
+        activeSong.name,
+        get().lyricsOptions,
       );
     },
 
     getProjectData(): DawProject {
       const s = get();
-      const tracks: ProjectTrackData[] = s.tracks.map((t) => ({
+      const currentSongs = s.songs.map((song) => {
+        if (song.id === s.activeSongId) {
+          return {
+            ...song,
+            tracks: s.tracks,
+            refTrackId: s.refTrackId,
+            masterVolPos: s.masterVolPos,
+            tempoRatio: s.tempoRatio,
+            masterSemitones: s.masterSemitones,
+            masterCents: s.masterCents,
+            keyLock: s.keyLock,
+            sections: s.sections,
+            activeSectionId: s.activeSectionId,
+            loopSectionId: s.loopSectionId,
+            queuedSectionId: s.queuedSectionId,
+            zoom: s.zoom,
+            lyrics: s.lyrics,
+          };
+        }
+        return song;
+      });
+
+      const serializedSongs = currentSongs.map((song) => ({
+        id: song.id,
+        name: song.name,
+        tracks: song.tracks.map((t) => ({
+          id: t.id,
+          name: t.name,
+          colorIndex: t.colorIndex,
+          volPos: t.volPos,
+          pan: t.pan,
+          mute: t.mute,
+          solo: t.solo,
+          semitones: t.semitones,
+          duration: t.duration,
+          bpm: t.bpm,
+          bpmConfidence: t.bpmConfidence,
+          key: t.key,
+          keyConfidence: t.keyConfidence,
+          trimStart: t.trimStart,
+          trimEnd: t.trimEnd,
+          fadeIn: t.fadeIn,
+          fadeOut: t.fadeOut,
+          pitchLocked: t.pitchLocked ?? false,
+          fileInfo: {
+            name: t.fileMeta?.name || `${t.name}.wav`,
+            size: t.fileMeta?.size,
+            type: t.fileMeta?.type,
+            lastModified: t.fileMeta?.lastModified,
+          },
+        })),
+        refTrackId: song.refTrackId,
+        master: {
+          volPos: song.masterVolPos,
+          tempoRatio: song.tempoRatio,
+          masterSemitones: song.masterSemitones,
+          masterCents: song.masterCents,
+          keyLock: song.keyLock,
+        },
+        sections: song.sections,
+        activeSectionId: song.activeSectionId,
+        loopSectionId: song.loopSectionId,
+        queuedSectionId: song.queuedSectionId,
+        lyrics: song.lyrics,
+        zoom: song.zoom,
+      }));
+
+      const activeTracks: ProjectTrackData[] = s.tracks.map((t) => ({
         id: t.id,
         name: t.name,
         colorIndex: t.colorIndex,
@@ -675,7 +1090,7 @@ export const useDaw = create<DawState>()((set, get) => {
       }));
 
       return {
-        version: 1,
+        version: 2,
         id: s.projectId,
         name: s.projectName,
         createdAt: new Date().toISOString(),
@@ -692,9 +1107,11 @@ export const useDaw = create<DawState>()((set, get) => {
           theme: s.theme,
           mixerPosition: s.mixerPosition,
         },
-        tracks,
+        tracks: activeTracks,
         sections: s.sections,
         lyrics: { ...s.lyrics, options: s.lyricsOptions },
+        songs: serializedSongs,
+        activeSongId: s.activeSongId,
       };
     },
 

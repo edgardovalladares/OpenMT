@@ -1111,6 +1111,131 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   gap: 8px;
   flex: none;
 }
+/* Barra de Sala Global y Bloqueo */
+.lyrics-room-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.lyrics-room-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.lyrics-room-bar__code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--bg-panel);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+  font-size: 11px;
+}
+.lyrics-room-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Tarjeta de Código QR para Celulares y Pantallas */
+.lyrics-qr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.lyrics-qr-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+.lyrics-qr-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-dim);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all .15s ease;
+}
+.lyrics-qr-tab:hover {
+  color: var(--text);
+  background: var(--bg-panel);
+}
+.lyrics-qr-tab--active {
+  color: var(--accent);
+  background: var(--bg-panel);
+  border-color: var(--accent);
+}
+.lyrics-qr-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+@media (max-width: 600px) {
+  .lyrics-qr-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+.lyrics-qr-img-wrapper {
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+.lyrics-qr-img {
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+.lyrics-qr-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.lyrics-qr-url-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  padding: 5px 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+.lyrics-qr-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .lyrics-links-card {
   display: flex;
   flex-direction: column;
@@ -1436,4 +1561,180 @@ body:has(.lyrics-stage--transparent),
   .clip-editor__grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- Barra de Pestañas de Repertorio / Canciones ---------- */
+.song-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 10px;
+  min-height: 34px;
+  user-select: none;
+}
+.song-tabs-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+  padding: 0 6px 0 2px;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.song-tabs-bar__scroll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  padding: 1px 0;
+}
+.song-tabs-bar__scroll::-webkit-scrollbar {
+  display: none;
+}
+.song-tabs-bar__scroll-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 3px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.song-tabs-bar__scroll-btn:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+.song-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+  max-width: 240px;
+}
+.song-tab:hover {
+  color: var(--text);
+  border-color: var(--border-soft);
+  background: var(--bg-raised);
+}
+.song-tab--active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-raised));
+  border-color: var(--accent);
+  color: var(--text);
+}
+.song-tab__icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  opacity: .75;
+}
+.song-tab--active .song-tab__icon {
+  opacity: 1;
+}
+.song-tab__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.song-tab__badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.song-tab--active .song-tab__badge {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.song-tab__lyrics-indicator {
+  color: var(--meter-ok);
+  display: flex;
+  align-items: center;
+}
+.song-tab__actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+}
+.song-tab:hover .song-tab__actions,
+.song-tab--active .song-tab__actions {
+  display: flex;
+}
+.song-tab__action-btn {
+  background: transparent;
+  border: none;
+  padding: 1px 3px;
+  border-radius: 2px;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.song-tab__action-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+.song-tab__action-btn--danger:hover {
+  color: #ff4d4f;
+}
+.song-tab__edit {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.song-tab__input {
+  background: var(--bg-app);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  width: 110px;
+}
+.song-tabs-bar__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.song-tabs-bar__add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
 

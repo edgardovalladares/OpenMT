@@ -1,4 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import QRCode from 'qrcode';
 import {
   FileText,
   Upload,
@@ -16,10 +17,24 @@ import {
   Lightbulb,
   X,
   List,
+  Lock,
+  Unlock,
+  RotateCcw,
+  QrCode,
+  Smartphone,
+  Wifi,
+  ShieldCheck,
 } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import { parseLrc, SAMPLE_LRC } from '../utils/lrcParser';
-import { setActiveRoom, getActiveRoom } from '../audio/lyricsSync';
+import {
+  setActiveRoom,
+  getPersistentRoom,
+  isRoomLocked,
+  setRoomLocked,
+  regeneratePersistentRoom,
+} from '../audio/lyricsSync';
+import type { ElectronLanInfo } from '../types/electron';
 
 interface Props {
   isOpen: boolean;
@@ -34,15 +49,82 @@ export function LyricsModal({ isOpen, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<'edit' | 'obs'>('edit');
   const [text, setText] = useState(lyrics.rawLrc);
   const [offset, setOffset] = useState(lyrics.offsetMs);
+  const [prevLrc, setPrevLrc] = useState(lyrics.rawLrc);
+
+  // Sincronizar estado cuando cambie la letra o canción activa en el DAW
+  if (lyrics.rawLrc !== prevLrc) {
+    setPrevLrc(lyrics.rawLrc);
+    setText(lyrics.rawLrc);
+    setOffset(lyrics.offsetMs);
+  }
+
+  // Estados de retroalimentación de copia
   const [copiedLocal, setCopiedLocal] = useState(false);
+  const [copiedLan, setCopiedLan] = useState(false);
   const [copiedRemote, setCopiedRemote] = useState(false);
-  const [remoteRoom, setRemoteRoom] = useState<string | null>(() => getActiveRoom());
+  const [copiedQr, setCopiedQr] = useState(false);
+
+  // Sala persistente y bloqueo
+  const [roomCode, setRoomCode] = useState<string>(() => getPersistentRoom());
+  const [isLocked, setIsLockedState] = useState<boolean>(() => isRoomLocked());
+
+  // Red local desde Electron (si está corriendo como app de escritorio)
+  const [lanInfo, setLanInfo] = useState<ElectronLanInfo | null>(null);
+
+  // Destino del Código QR
+  const [qrTarget, setQrTarget] = useState<'mobile-prompter' | 'obs' | 'remote'>('mobile-prompter');
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parsedLines = useMemo(() => parseLrc(text), [text]);
 
-  if (!isOpen) return null;
+  // Obtener información LAN de Electron si está disponible
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI?.getLanInfo) {
+      window.electronAPI
+        .getLanInfo()
+        .then((info) => {
+          if (info && info.localUrl) {
+            setLanInfo(info);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Asegurar sala activa
+  useEffect(() => {
+    if (roomCode) {
+      setActiveRoom(roomCode);
+    }
+  }, [roomCode]);
+
+  // Alternar bloqueo de enlace
+  const handleToggleLock = () => {
+    const nextLocked = !isLocked;
+    setIsLockedState(nextLocked);
+    setRoomLocked(nextLocked);
+  };
+
+  // Regenerar sala
+  const handleRegenerateRoom = () => {
+    if (isLocked) {
+      alert(
+        'El enlace está protegido para evitar desconfigurar OBS. Desbloquéalo primero si deseas generar una nueva sala.'
+      );
+      return;
+    }
+    if (
+      window.confirm(
+        '¿Deseas regenerar el enlace global de letras? Si ya configuraste OBS o conectaste celulares, deberás actualizar el nuevo enlace o QR.'
+      )
+    ) {
+      const newRoom = regeneratePersistentRoom();
+      setRoomCode(newRoom);
+      setActiveRoom(newRoom);
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -68,63 +150,82 @@ export function LyricsModal({ isOpen, onClose }: Props) {
     setLyricsOffset(newOffset);
   };
 
-  // Generar URL local para OBS Studio
-  const generateLocalObsUrl = () => {
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
-    const searchParams = new URLSearchParams({
-      view: 'lyrics',
-      theme: options.theme,
-      mode: options.mode,
-      fontSize: options.fontSize,
-      uppercase: String(options.uppercase),
-      showNext: String(options.showNext),
-    });
-    return `${origin}${pathname}?${searchParams.toString()}`;
-  };
-
-  // Generar URL remota con sala compartida
-  const generateRemoteUrl = (roomCode: string) => {
-    const origin = window.location.origin;
+  // Constructor centralizado de URLs
+  const buildLyricsUrl = (target: 'mobile-prompter' | 'obs' | 'remote') => {
+    const isMobile = target === 'mobile-prompter';
+    const origin = isMobile && lanInfo?.localUrl ? lanInfo.localUrl : window.location.origin;
     const pathname = window.location.pathname;
     const searchParams = new URLSearchParams({
       view: 'lyrics',
       room: roomCode,
-      theme: options.theme,
-      mode: options.mode,
-      fontSize: options.fontSize,
+      theme: isMobile ? 'dark' : options.theme,
+      mode: isMobile ? 'prompter' : options.mode,
+      fontSize: isMobile ? 'large' : options.fontSize,
       uppercase: String(options.uppercase),
-      showNext: String(options.showNext),
+      showNext: isMobile ? 'true' : String(options.showNext),
     });
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
 
-  const handleCopyLocalLink = async () => {
+  const generateLocalObsUrl = () => buildLyricsUrl('obs');
+  const generateLanPrompterUrl = () => buildLyricsUrl('mobile-prompter');
+  const generateRemoteUrl = () => buildLyricsUrl('remote');
+
+  // URL activa para el Código QR
+  const currentQrUrl = useMemo(() => {
+    return buildLyricsUrl(qrTarget);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrTarget, roomCode, lanInfo?.localUrl, options.theme, options.mode, options.fontSize, options.uppercase, options.showNext]);
+
+  // Generar Código QR automáticamente
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL(currentQrUrl, {
+      width: 150,
+      margin: 1,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => {
+        if (active) setQrDataUrl(url);
+      })
+      .catch((err) => {
+        console.warn('Error generando QR:', err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentQrUrl]);
+
+  // Acciones de copiado al portapapeles
+  const copyToClipboard = async (url: string, setCopied: (v: boolean) => void) => {
     setLyrics(text, offset);
-    const url = generateLocalObsUrl();
     try {
       await navigator.clipboard.writeText(url);
-      setCopiedLocal(true);
-      setTimeout(() => setCopiedLocal(false), 2500);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
     } catch {
-      prompt('Copia este enlace local para OBS:', url);
+      prompt('Copia este enlace:', url);
     }
   };
 
-  const handleGenerateRemoteRoom = async () => {
-    setLyrics(text, offset);
-    const code = remoteRoom || `openmt-${Math.random().toString(36).substring(2, 8)}`;
-    setRemoteRoom(code);
-    setActiveRoom(code);
+  const handleCopyLocalLink = () => {
+    copyToClipboard(generateLocalObsUrl(), setCopiedLocal);
+  };
 
-    const url = generateRemoteUrl(code);
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedRemote(true);
-      setTimeout(() => setCopiedRemote(false), 2500);
-    } catch {
-      prompt('Copia este enlace compartido para OBS:', url);
-    }
+  const handleCopyLanLink = () => {
+    copyToClipboard(generateLanPrompterUrl(), setCopiedLan);
+  };
+
+  const handleCopyRemoteRoom = () => {
+    copyToClipboard(generateRemoteUrl(), setCopiedRemote);
+  };
+
+  const handleCopyQrUrl = () => {
+    copyToClipboard(currentQrUrl, setCopiedQr);
   };
 
   const handleOpenPopup = () => {
@@ -132,6 +233,8 @@ export function LyricsModal({ isOpen, onClose }: Props) {
     const url = generateLocalObsUrl();
     window.open(url, 'OpenMT_Lyrics', 'width=1000,height=600,menubar=no,toolbar=no,location=no');
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -146,7 +249,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={18} style={{ color: 'var(--accent)' }} />
             <h2 id="lyrics-modal-title" className="modal__title">
-              Letras Sincronizadas (LRC / OBS Studio)
+              Letras Sincronizadas (LRC / OBS Studio / Red Local)
             </h2>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar">
@@ -154,7 +257,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
           </button>
         </div>
 
-        {/* Pestañas */}
+        {/* Pestañas Principales */}
         <div className="lyrics-modal__tabs">
           <button
             type="button"
@@ -170,7 +273,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
             onClick={() => setActiveTab('obs')}
           >
             <Tv size={13} />
-            <span>Configuración y Transmisión a OBS</span>
+            <span>Configuración, QR y Transmisión</span>
           </button>
         </div>
 
@@ -215,7 +318,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                       type="button"
                       className="btn btn--danger"
                       onClick={() => {
-                        if (window.confirm('¿Deseas borrar la letra cargada?')) {
+                        if (window.confirm('¿Deseas borrar la letra cargada de esta canción?')) {
                           setText('');
                           clearLyrics();
                         }
@@ -232,7 +335,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                 {/* Textarea */}
                 <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <label className="form-label" htmlFor="lrc-textarea">
-                    Contenido LRC (formato estándar <code>[mm:ss.xx] Letra</code>):
+                    Contenido LRC de la canción actual (formato estándar <code>[mm:ss.xx] Letra</code>):
                   </label>
                   <textarea
                     id="lrc-textarea"
@@ -264,7 +367,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
               {/* Columna Derecha: Calibración y Previsualización de versos */}
               <div className="lyrics-editor-right">
-                {/* Calibración de timing / Latencia de audio */}
+                {/* Calibración de timing */}
                 <div className="lyrics-timing-card">
                   <div className="lyrics-timing-card__header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -384,15 +487,61 @@ export function LyricsModal({ isOpen, onClose }: Props) {
               </div>
             </div>
           ) : (
-            /* PESTAÑA TRANSMISIÓN A OBS / PANTALLAS */
+            /* PESTAÑA TRANSMISIÓN A OBS / PANTALLAS / RED LOCAL */
             <div className="lyrics-obs-grid">
-              {/* Columna Izquierda: Enlaces y Guía */}
+              {/* Columna Izquierda: Enlace Global, Enlaces y Código QR */}
               <div className="lyrics-obs-left">
+                {/* Barra de Enlace Global y Bloqueo */}
+                <div className="lyrics-room-bar">
+                  <div className="lyrics-room-bar__info">
+                    {isLocked ? (
+                      <ShieldCheck size={18} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
+                    ) : (
+                      <Unlock size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    )}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ fontSize: 12 }}>Enlace Global:</strong>
+                        <span className="lyrics-room-bar__code">{roomCode}</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                        {isLocked
+                          ? 'Enlace fijo protegido. No cambiará entre canciones ni al reiniciar.'
+                          : 'Enlace desbloqueado. Puedes regenerar una nueva sala si lo necesitas.'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lyrics-room-bar__actions">
+                    <button
+                      type="button"
+                      className={`btn btn--tiny ${isLocked ? 'btn--accent' : ''}`}
+                      onClick={handleToggleLock}
+                      title={isLocked ? 'Hacer clic para permitir regenerar el enlace' : 'Bloquear enlace para que nunca se modifique'}
+                    >
+                      {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                      <span>{isLocked ? 'Bloqueado' : 'Desbloqueado'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn--tiny"
+                      onClick={handleRegenerateRoom}
+                      disabled={isLocked}
+                      title={isLocked ? 'Desbloquea el enlace primero para regenerar' : 'Generar una nueva sala aleatoria'}
+                    >
+                      <RotateCcw size={12} />
+                      <span>Regenerar</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Banner de Salida Limpia */}
                 <div className="lyrics-obs-tab__hero">
                   <div>
-                    <h3 style={{ margin: 0, fontSize: 13 }}>Salida Limpia para Pantallas</h3>
+                    <h3 style={{ margin: 0, fontSize: 12.5 }}>Salida Limpia para Escenario y Transmisión</h3>
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-dim)' }}>
-                      100 % limpia para proyectores, monitores secundarios o captura de video.
+                      El enlace es global para todo el setlist: al cambiar de canción, OBS y las pantallas se actualizarán solas.
                     </p>
                   </div>
 
@@ -404,20 +553,21 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                       title="Abrir en ventana emergente independiente para proyector o segunda pantalla"
                     >
                       <ExternalLink size={13} />
-                      <span>Abrir Ventana Limpia</span>
+                      <span>Ventana Limpia</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Enlaces para OBS */}
+                {/* Tarjetas de Enlaces de Transmisión */}
                 <div className="lyrics-links-card">
+                  {/* 1. OBS Local */}
                   <div className="lyrics-link-row">
                     <div className="lyrics-link-row__info">
                       <Tv size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                       <div>
                         <strong>1. Enlace Local para OBS (Este equipo):</strong>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                          Relay directo de ultra baja latencia. Recomendado para OBS en esta máquina.
+                        <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                          Relay directo de ultra baja latencia. Ideal para capturar como Navegador en OBS Studio.
                         </div>
                       </div>
                     </div>
@@ -425,34 +575,161 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                       type="button"
                       className={`btn btn--tiny ${copiedLocal ? 'btn--play' : 'btn--accent'}`}
                       onClick={handleCopyLocalLink}
-                      style={{ minWidth: 140, flexShrink: 0 }}
+                      style={{ minWidth: 125, flexShrink: 0 }}
                     >
                       {copiedLocal ? <Check size={12} /> : <Copy size={12} />}
                       <span>{copiedLocal ? '¡Copiado!' : 'Copiar para OBS'}</span>
                     </button>
                   </div>
 
+                  {/* 2. Red Local WiFi (Desktop / LAN) */}
                   <div className="lyrics-link-row" style={{ borderTop: '1px solid var(--border)' }}>
                     <div className="lyrics-link-row__info">
-                      <Globe size={16} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
+                      <Wifi size={16} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
                       <div>
-                        <strong>2. Enlace en Línea (WebRTC / Remoto):</strong>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                          {remoteRoom
-                            ? `Sala activa: ${remoteRoom} (sincroniza en tiempo real vía WebRTC)`
-                            : 'Genera un link con sala P2P para OBS o pantallas en otra computadora.'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <strong>2. Red Local WiFi (Celulares y Tablets):</strong>
+                          {lanInfo && (
+                            <span style={{ fontSize: 10, background: 'var(--bg-panel)', padding: '1px 5px', borderRadius: 3, color: 'var(--meter-ok)' }}>
+                              LAN Activo ({lanInfo.port})
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                          {lanInfo
+                            ? `Disponible en ${lanInfo.localUrl}. Cualquier dispositivo en tu WiFi puede ver la letra sin internet.`
+                            : 'Acceso en red local para teleprompter de vocalistas o músicos en escenario.'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={`btn btn--tiny ${copiedLan ? 'btn--play' : ''}`}
+                      onClick={handleCopyLanLink}
+                      style={{ minWidth: 125, flexShrink: 0 }}
+                    >
+                      {copiedLan ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedLan ? '¡Copiado!' : 'Copiar WiFi'}</span>
+                    </button>
+                  </div>
+
+                  {/* 3. Enlace Online WebRTC */}
+                  <div className="lyrics-link-row" style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="lyrics-link-row__info">
+                      <Globe size={16} style={{ color: '#38bdf8', flexShrink: 0 }} />
+                      <div>
+                        <strong>3. Enlace en Línea (WebRTC Remoto):</strong>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                          Sincroniza en tiempo real a través de internet con pantallas en otras ubicaciones.
                         </div>
                       </div>
                     </div>
                     <button
                       type="button"
                       className={`btn btn--tiny ${copiedRemote ? 'btn--play' : ''}`}
-                      onClick={handleGenerateRemoteRoom}
-                      style={{ minWidth: 140, flexShrink: 0 }}
+                      onClick={handleCopyRemoteRoom}
+                      style={{ minWidth: 125, flexShrink: 0 }}
                     >
                       {copiedRemote ? <Check size={12} /> : <Globe size={12} />}
-                      <span>{copiedRemote ? '¡Copiado!' : remoteRoom ? 'Copiar sala' : 'Generar enlace online'}</span>
+                      <span>{copiedRemote ? '¡Copiado!' : 'Copiar Online'}</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* Tarjeta de Código QR */}
+                <div className="lyrics-qr-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <QrCode size={15} style={{ color: 'var(--accent)' }} />
+                      <strong style={{ fontSize: 12 }}>Escanear Código QR en Celular o Tablet</strong>
+                    </div>
+                    <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>Sin escribir enlaces</span>
+                  </div>
+
+                  {/* Pestañas del QR */}
+                  <div className="lyrics-qr-tabs">
+                    <button
+                      type="button"
+                      className={`lyrics-qr-tab ${qrTarget === 'mobile-prompter' ? 'lyrics-qr-tab--active' : ''}`}
+                      onClick={() => setQrTarget('mobile-prompter')}
+                    >
+                      <Smartphone size={12} />
+                      <span>Prompter Celular (WiFi)</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`lyrics-qr-tab ${qrTarget === 'obs' ? 'lyrics-qr-tab--active' : ''}`}
+                      onClick={() => setQrTarget('obs')}
+                    >
+                      <Tv size={12} />
+                      <span>OBS / Pantalla</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`lyrics-qr-tab ${qrTarget === 'remote' ? 'lyrics-qr-tab--active' : ''}`}
+                      onClick={() => setQrTarget('remote')}
+                    >
+                      <Globe size={12} />
+                      <span>Online WebRTC</span>
+                    </button>
+                  </div>
+
+                  <div className="lyrics-qr-body">
+                    {/* Código QR renderizado */}
+                    <div className="lyrics-qr-img-wrapper">
+                      {qrDataUrl ? (
+                        <img src={qrDataUrl} alt="Código QR Letras OpenMT" className="lyrics-qr-img" />
+                      ) : (
+                        <div style={{ width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 11 }}>
+                          Generando...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Detalles y Acciones del QR */}
+                    <div className="lyrics-qr-details">
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                        {qrTarget === 'mobile-prompter' && (
+                          <>
+                            Abre la cámara de tu teléfono o tablet conectada a la misma red WiFi para ver el <strong>teleprompter en vivo</strong> optimizado para vocalistas.
+                          </>
+                        )}
+                        {qrTarget === 'obs' && (
+                          <>
+                            Enlace configurado con tus opciones de salida limpia para captura o monitores de retorno.
+                          </>
+                        )}
+                        {qrTarget === 'remote' && (
+                          <>
+                            Enlace público que se conecta a tu sesión en tiempo real a través de WebRTC.
+                          </>
+                        )}
+                      </p>
+
+                      <div className="lyrics-qr-url-box" title={currentQrUrl}>
+                        {currentQrUrl}
+                      </div>
+
+                      <div className="lyrics-qr-actions">
+                        <button
+                          type="button"
+                          className={`btn btn--tiny ${copiedQr ? 'btn--play' : 'btn--accent'}`}
+                          onClick={handleCopyQrUrl}
+                        >
+                          {copiedQr ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{copiedQr ? '¡Copiado!' : 'Copiar este enlace'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--tiny"
+                          onClick={() => window.open(currentQrUrl, '_blank')}
+                          title="Abrir este enlace en una pestaña nueva"
+                        >
+                          <ExternalLink size={12} />
+                          <span>Abrir</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -466,7 +743,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                     <li>Copia el <strong>Enlace local para OBS</strong> mostrado arriba.</li>
                     <li>En OBS Studio, ve al panel <strong>Fuentes</strong>, presiona <strong>+</strong> y selecciona <strong>Navegador</strong>.</li>
                     <li>Pega la URL copiada en el campo <strong>URL</strong> (Ancho: <code>1920</code>, Alto: <code>1080</code>).</li>
-                    <li>¡Listo! Al reproducir en OpenMT, la letra se sincronizará automáticamente sin refrescar la página.</li>
+                    <li>¡Listo! Al reproducir o cambiar de canción en OpenMT, la letra se actualizará de forma instantánea.</li>
                   </ol>
                 </div>
               </div>
@@ -623,7 +900,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
         <div className="modal__footer">
           <div className="modal__footer-status">
             <CheckCircle2 size={12} style={{ color: 'var(--meter-ok)', verticalAlign: -1, marginRight: 4 }} />
-            <span>Relay de sincronización local y online activo</span>
+            <span>Sincronización global activa ({isLocked ? 'Enlace bloqueado' : 'Enlace desbloqueado'})</span>
           </div>
 
           <button type="button" className="btn" onClick={onClose}>
