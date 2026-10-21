@@ -1,15 +1,15 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
-const fs = require('fs');
 const os = require('os');
+const fs = require('fs');
 
 let mainWindow = null;
 let lanServer = null;
 let lanPort = 3000;
 let lanIps = [];
 
-// Estado compartido de letras en el servidor local
+// Estado actual de letras en memoria para el servidor LAN
 let currentState = {
   type: 'FULL_SYNC',
   rawLrc: '',
@@ -46,22 +46,31 @@ const MIME_TYPES = {
 
 function getLocalIpAddresses() {
   const ifaces = os.networkInterfaces();
-  const ips = [];
+  const priorityIps = [];
+  const otherIps = [];
+
   for (const name of Object.keys(ifaces)) {
+    const isPriority = /wi-?fi|ethernet|wlan|lan|red/i.test(name) && !/virtual|wsl|hyper-v|vethernet|loopback/i.test(name);
     for (const net of ifaces[name] || []) {
       if (net.family === 'IPv4' && !net.internal) {
-        ips.push(net.address);
+        if (isPriority) {
+          priorityIps.push(net.address);
+        } else {
+          otherIps.push(net.address);
+        }
       }
     }
   }
-  return ips.length > 0 ? ips : ['127.0.0.1'];
+
+  const all = [...priorityIps, ...otherIps];
+  return all.length > 0 ? all : ['127.0.0.1'];
 }
 
-function startLanServer(distDir) {
+function startLanServer(distDir, onListening) {
   lanIps = getLocalIpAddresses();
 
   lanServer = http.createServer((req, res) => {
-    // CORS headers para permitir conexiones de OBS y cualquier navegador
+    // CORS headers para permitir conexiones de OBS, celulares y cualquier navegador
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -107,7 +116,7 @@ function startLanServer(distDir) {
               try {
                 client.write(payload);
               } catch {
-                // ignore
+                sseClients.delete(client);
               }
             }
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -155,6 +164,7 @@ function startLanServer(distDir) {
     lanServer.listen(port, '0.0.0.0', () => {
       lanPort = port;
       console.log(`[OpenMT LAN Server] Escuchando en 0.0.0.0:${lanPort}`);
+      if (onListening) onListening(lanPort);
     });
 
     lanServer.on('error', (err) => {
@@ -185,15 +195,14 @@ function createWindow() {
   });
 
   const distDir = path.join(__dirname, '../dist');
-  startLanServer(distDir);
-
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  if (isDev && process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    // En producción, cargar el servidor LAN local
-    mainWindow.loadURL(`http://localhost:${lanPort}`);
-  }
+  startLanServer(distDir, (port) => {
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    if (isDev && process.env.VITE_DEV_SERVER_URL) {
+      mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    } else {
+      mainWindow.loadURL(`http://localhost:${port}`);
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -202,12 +211,26 @@ function createWindow() {
 
 // IPC Handlers
 ipcMain.handle('get-lan-info', () => {
+  lanIps = getLocalIpAddresses();
   const primaryIp = lanIps[0] || '127.0.0.1';
   return {
     localUrl: `http://${primaryIp}:${lanPort}`,
     ips: lanIps,
     port: lanPort,
   };
+});
+
+ipcMain.on('lyrics-sync-update', (_event, data) => {
+  if (!data) return;
+  currentState = { ...currentState, ...data, timestamp: Date.now() };
+  const payload = `data: ${JSON.stringify({ type: data.type || 'FULL_SYNC', ...currentState })}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
 });
 
 app.whenReady().then(() => {

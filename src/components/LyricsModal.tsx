@@ -13,18 +13,18 @@ import {
   Clock,
   CheckCircle2,
   Globe,
-  HelpCircle,
   Lightbulb,
   X,
   List,
   Lock,
   Unlock,
   RotateCcw,
-  QrCode,
   Smartphone,
   Wifi,
   ShieldCheck,
   Eye,
+  Radio,
+  Download,
 } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import { parseLrc, SAMPLE_LRC } from '../utils/lrcParser';
@@ -63,7 +63,6 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   // Estados de retroalimentación de copia
   const [copiedLocal, setCopiedLocal] = useState(false);
-  const [copiedLan, setCopiedLan] = useState(false);
   const [copiedRemote, setCopiedRemote] = useState(false);
   const [copiedQr, setCopiedQr] = useState(false);
 
@@ -73,6 +72,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   // Red local desde Electron (si está corriendo como app de escritorio)
   const [lanInfo, setLanInfo] = useState<ElectronLanInfo | null>(null);
+  const isDesktop = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
 
   // Destino del Código QR
   const [qrTarget, setQrTarget] = useState<'mobile-prompter' | 'obs' | 'remote'>('mobile-prompter');
@@ -153,32 +153,63 @@ export function LyricsModal({ isOpen, onClose }: Props) {
     setLyricsOffset(newOffset);
   };
 
-  // Constructor centralizado de URLs
-  const buildLyricsUrl = (target: 'mobile-prompter' | 'obs' | 'remote') => {
-    const isMobile = target === 'mobile-prompter';
-    const origin = isMobile && lanInfo?.localUrl ? lanInfo.localUrl : window.location.origin;
+  // Generador centralizado de URLs adaptado a Desktop vs Web
+  const generateLocalObsUrl = () => {
+    const origin = isDesktop && lanInfo?.port ? `http://localhost:${lanInfo.port}` : window.location.origin;
     const pathname = window.location.pathname;
     const searchParams = new URLSearchParams({
       view: 'lyrics',
       room: roomCode,
-      theme: isMobile ? 'dark' : options.theme,
-      mode: isMobile ? 'prompter' : options.mode,
-      fontSize: isMobile ? 'large' : options.fontSize,
+      theme: options.theme,
+      mode: options.mode,
+      fontSize: options.fontSize,
       uppercase: String(options.uppercase),
-      showNext: isMobile ? 'true' : String(options.showNext),
+      showNext: String(options.showNext),
     });
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
 
-  const generateLocalObsUrl = () => buildLyricsUrl('obs');
-  const generateLanPrompterUrl = () => buildLyricsUrl('mobile-prompter');
-  const generateRemoteUrl = () => buildLyricsUrl('remote');
+  const generateLanPrompterUrl = () => {
+    const origin = isDesktop && lanInfo?.localUrl ? lanInfo.localUrl : window.location.origin;
+    const pathname = window.location.pathname;
+    const searchParams = new URLSearchParams({
+      view: 'lyrics',
+      room: roomCode,
+      theme: 'dark',
+      mode: 'prompter',
+      fontSize: 'large',
+      uppercase: String(options.uppercase),
+      showNext: 'true',
+    });
+    return `${origin}${pathname}?${searchParams.toString()}`;
+  };
+
+  const generateRemoteUrl = () => {
+    const origin = isDesktop ? 'https://openmt.vercel.app' : window.location.origin;
+    const pathname = isDesktop ? '/' : window.location.pathname;
+    const searchParams = new URLSearchParams({
+      view: 'lyrics',
+      room: roomCode,
+      theme: options.theme,
+      mode: options.mode,
+      fontSize: options.fontSize,
+      uppercase: String(options.uppercase),
+      showNext: String(options.showNext),
+    });
+    return `${origin}${pathname}?${searchParams.toString()}`;
+  };
+
+  const buildLyricsUrl = (target: 'mobile-prompter' | 'obs' | 'remote') => {
+    if (target === 'mobile-prompter') return generateLanPrompterUrl();
+    if (target === 'obs') return generateLocalObsUrl();
+    return generateRemoteUrl();
+  };
 
   // URL activa para el Código QR
   const currentQrUrl = useMemo(() => {
     return buildLyricsUrl(qrTarget);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrTarget, roomCode, lanInfo?.localUrl, options.theme, options.mode, options.fontSize, options.uppercase, options.showNext]);
+  }, [qrTarget, roomCode, lanInfo?.localUrl, lanInfo?.port, options.theme, options.mode, options.fontSize, options.uppercase, options.showNext]);
 
   // Generar Código QR automáticamente
   useEffect(() => {
@@ -217,10 +248,6 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   const handleCopyLocalLink = () => {
     copyToClipboard(generateLocalObsUrl(), setCopiedLocal);
-  };
-
-  const handleCopyLanLink = () => {
-    copyToClipboard(generateLanPrompterUrl(), setCopiedLan);
   };
 
   const handleCopyRemoteRoom = () => {
@@ -669,7 +696,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
             </div>
           )}
 
-          {/* SECCIÓN 3: Transmisión, Enlaces y Código QR */}
+          {/* SECCIÓN 3: Transmisión, Enlaces y Código QR (Optimizado por Entorno Desktop / Web) */}
           {activeTab === 'broadcast' && (
             <div className="lyrics-broadcast-container">
               {/* Barra Superior de Sala Global y Bloqueo */}
@@ -728,199 +755,282 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Grid de 2 Columnas para Transmisión */}
-              <div className="lyrics-broadcast-grid">
-                {/* Columna Izquierda: Enlaces para Copiar y Guía */}
-                <div className="lyrics-broadcast-left">
-                  <div className="lyrics-links-card">
-                    {/* 1. OBS Local */}
-                    <div className="lyrics-link-row">
-                      <div className="lyrics-link-row__info">
-                        <Tv size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                        <div>
-                          <strong>1. Enlace Local para OBS (Este equipo):</strong>
-                          <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
-                            Relay directo de ultra baja latencia para capturar como Fuente Navegador en OBS Studio.
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className={`btn btn--tiny ${copiedLocal ? 'btn--play' : 'btn--accent'}`}
-                        onClick={handleCopyLocalLink}
-                        style={{ minWidth: 125, flexShrink: 0 }}
-                      >
-                        {copiedLocal ? <Check size={12} /> : <Copy size={12} />}
-                        <span>{copiedLocal ? '¡Copiado!' : 'Copiar para OBS'}</span>
-                      </button>
+              {/* Tarjeta Principal Adaptada (Desktop LAN vs Web WebRTC) */}
+              {isDesktop ? (
+                /* MODO ESCRITORIO (.EXE): Red Local WiFi como Protagonista */
+                <div className="lyrics-hero-card lyrics-hero-card--desktop">
+                  <div className="lyrics-hero-card__header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Wifi size={17} style={{ color: 'var(--meter-ok)' }} />
+                      <strong style={{ fontSize: 13 }}>Red Local WiFi (Servidor LAN Autónomo)</strong>
                     </div>
-
-                    {/* 2. Red Local WiFi (Desktop / LAN) */}
-                    <div className="lyrics-link-row" style={{ borderTop: '1px solid var(--border)' }}>
-                      <div className="lyrics-link-row__info">
-                        <Wifi size={16} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <strong>2. Red Local WiFi (Celulares y Tablets):</strong>
-                            {lanInfo && (
-                              <span style={{ fontSize: 10, background: 'var(--bg-panel)', padding: '1px 5px', borderRadius: 3, color: 'var(--meter-ok)' }}>
-                                LAN Activo ({lanInfo.port})
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
-                            {lanInfo
-                              ? `Disponible en ${lanInfo.localUrl}. Cualquier dispositivo en tu WiFi puede ver la letra sin internet.`
-                              : 'Acceso en red local para teleprompter de vocalistas o músicos en escenario.'}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className={`btn btn--tiny ${copiedLan ? 'btn--play' : ''}`}
-                        onClick={handleCopyLanLink}
-                        style={{ minWidth: 125, flexShrink: 0 }}
-                      >
-                        {copiedLan ? <Check size={12} /> : <Copy size={12} />}
-                        <span>{copiedLan ? '¡Copiado!' : 'Copiar WiFi'}</span>
-                      </button>
-                    </div>
-
-                    {/* 3. Enlace Online WebRTC */}
-                    <div className="lyrics-link-row" style={{ borderTop: '1px solid var(--border)' }}>
-                      <div className="lyrics-link-row__info">
-                        <Globe size={16} style={{ color: '#38bdf8', flexShrink: 0 }} />
-                        <div>
-                          <strong>3. Enlace en Línea (WebRTC Remoto):</strong>
-                          <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
-                            Sincroniza en tiempo real a través de internet con pantallas en otras ubicaciones.
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className={`btn btn--tiny ${copiedRemote ? 'btn--play' : ''}`}
-                        onClick={handleCopyRemoteRoom}
-                        style={{ minWidth: 125, flexShrink: 0 }}
-                      >
-                        {copiedRemote ? <Check size={12} /> : <Globe size={12} />}
-                        <span>{copiedRemote ? '¡Copiado!' : 'Copiar Online'}</span>
-                      </button>
-                    </div>
+                    <span className="lyrics-badge lyrics-badge--ok">
+                      En línea en puerto {lanInfo?.port || 3000} (Sin requerir Internet)
+                    </span>
                   </div>
 
-                  {/* Guía Rápida para OBS */}
-                  <div className="lyrics-obs-guide">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <HelpCircle size={13} style={{ color: 'var(--accent)' }} />
-                      <strong>Instrucciones para OBS Studio:</strong>
+                  <div className="lyrics-hero-card__content">
+                    {/* Código QR Prominente */}
+                    <div className="lyrics-hero-qr-box">
+                      <div className="lyrics-qr-img-wrapper">
+                        {qrDataUrl ? (
+                          <img src={qrDataUrl} alt="Código QR WiFi OpenMT" className="lyrics-qr-img" />
+                        ) : (
+                          <div style={{ width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 11 }}>
+                            Generando QR...
+                          </div>
+                        )}
+                      </div>
+                      <span className="lyrics-hero-qr-label">Escanear con Celular o Tablet</span>
                     </div>
-                    <ol style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
-                      <li>Copia el <strong>Enlace local para OBS</strong> mostrado arriba.</li>
-                      <li>En OBS Studio, ve al panel <strong>Fuentes</strong>, presiona <strong>+</strong> y selecciona <strong>Navegador</strong>.</li>
-                      <li>Pega la URL copiada en el campo <strong>URL</strong> (Ancho: <code>1920</code>, Alto: <code>1080</code>).</li>
-                      <li>¡Listo! Al reproducir o cambiar de canción en OpenMT, la letra se actualizará de forma instantánea.</li>
+
+                    {/* Detalles de Conexión WiFi */}
+                    <div className="lyrics-hero-details">
+                      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text)', lineHeight: 1.45 }}>
+                        Cualquier teléfono, tablet o computadora conectada al <strong>mismo Wi-Fi</strong> puede abrir el teleprompter en tiempo real durante ensayos o conciertos <strong>sin conexión a internet</strong>.
+                      </p>
+
+                      <div className="lyrics-target-selector">
+                        <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 600 }}>Destino del enlace:</span>
+                        <div className="row" style={{ gap: 4 }}>
+                          <button
+                            type="button"
+                            className={`btn btn--tiny ${qrTarget === 'mobile-prompter' ? 'btn--accent' : ''}`}
+                            onClick={() => setQrTarget('mobile-prompter')}
+                          >
+                            <Smartphone size={11} />
+                            <span>Teleprompter Músicos (Celular)</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn--tiny ${qrTarget === 'obs' ? 'btn--accent' : ''}`}
+                            onClick={() => setQrTarget('obs')}
+                          >
+                            <Tv size={11} />
+                            <span>Salida Limpia (OBS / Pantalla)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="lyrics-qr-url-box" title={currentQrUrl}>
+                        {currentQrUrl}
+                      </div>
+
+                      <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                        <button
+                          type="button"
+                          className={`btn btn--tiny ${copiedQr ? 'btn--play' : 'btn--accent'}`}
+                          onClick={handleCopyQrUrl}
+                          style={{ minWidth: 140 }}
+                        >
+                          {copiedQr ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{copiedQr ? '¡Copiado!' : 'Copiar este Enlace'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--tiny"
+                          onClick={() => window.open(currentQrUrl, '_blank')}
+                          title="Abrir este enlace en una pestaña nueva"
+                        >
+                          <ExternalLink size={12} />
+                          <span>Abrir en Navegador</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* MODO WEB (Vercel / Navegador): WebRTC Online como Protagonista */
+                <div className="lyrics-hero-card lyrics-hero-card--web">
+                  <div className="lyrics-hero-card__header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Globe size={17} style={{ color: '#38bdf8' }} />
+                      <strong style={{ fontSize: 13 }}>Transmisión en Línea (WebRTC en Tiempo Real)</strong>
+                    </div>
+                    <span className="lyrics-badge lyrics-badge--web">
+                      Sala P2P: {roomCode}
+                    </span>
+                  </div>
+
+                  <div className="lyrics-hero-card__content">
+                    {/* Código QR Prominente */}
+                    <div className="lyrics-hero-qr-box">
+                      <div className="lyrics-qr-img-wrapper">
+                        {qrDataUrl ? (
+                          <img src={qrDataUrl} alt="Código QR WebRTC OpenMT" className="lyrics-qr-img" />
+                        ) : (
+                          <div style={{ width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 11 }}>
+                            Generando QR...
+                          </div>
+                        )}
+                      </div>
+                      <span className="lyrics-hero-qr-label">Escanear para Ver en Vivo</span>
+                    </div>
+
+                    {/* Detalles de Conexión WebRTC */}
+                    <div className="lyrics-hero-details">
+                      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text)', lineHeight: 1.45 }}>
+                        Sincronización punto a punto (WebRTC) de ultra baja latencia. Cualquier dispositivo con acceso a internet puede seguir la letra de tus secuencias en vivo.
+                      </p>
+
+                      <div className="lyrics-target-selector">
+                        <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 600 }}>Destino del enlace:</span>
+                        <div className="row" style={{ gap: 4 }}>
+                          <button
+                            type="button"
+                            className={`btn btn--tiny ${qrTarget === 'mobile-prompter' ? 'btn--accent' : ''}`}
+                            onClick={() => setQrTarget('mobile-prompter')}
+                          >
+                            <Smartphone size={11} />
+                            <span>Teleprompter Celular</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn--tiny ${qrTarget === 'obs' ? 'btn--accent' : ''}`}
+                            onClick={() => setQrTarget('obs')}
+                          >
+                            <Tv size={11} />
+                            <span>Salida OBS / Pantalla</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="lyrics-qr-url-box" title={currentQrUrl}>
+                        {currentQrUrl}
+                      </div>
+
+                      <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                        <button
+                          type="button"
+                          className={`btn btn--tiny ${copiedQr ? 'btn--play' : 'btn--accent'}`}
+                          onClick={handleCopyQrUrl}
+                          style={{ minWidth: 140 }}
+                        >
+                          {copiedQr ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{copiedQr ? '¡Copiado!' : 'Copiar este Enlace'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--tiny"
+                          onClick={() => window.open(currentQrUrl, '_blank')}
+                          title="Abrir este enlace en una pestaña nueva"
+                        >
+                          <ExternalLink size={12} />
+                          <span>Abrir</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fila Inferior: 2 Columnas Balanceadas (OBS Local y Métodos Alternativos) */}
+              <div className="lyrics-secondary-grid">
+                {/* Columna 1: Salida OBS Studio */}
+                <div className="lyrics-subcard">
+                  <div className="lyrics-subcard__header">
+                    <Tv size={15} style={{ color: 'var(--accent)' }} />
+                    <strong style={{ fontSize: 12 }}>Salida para OBS Studio (Captura de Video)</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                    Fuente Navegador con fondo transparente y actualización inmediata para transmisiones en directo.
+                  </p>
+
+                  <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      className={`btn btn--tiny ${copiedLocal ? 'btn--play' : 'btn--accent'}`}
+                      onClick={handleCopyLocalLink}
+                      style={{ flex: 1 }}
+                    >
+                      {copiedLocal ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedLocal ? '¡Copiado!' : 'Copiar Enlace OBS'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--tiny"
+                      onClick={handleOpenPopup}
+                      title="Abrir ventana limpia para proyector o segunda pantalla"
+                    >
+                      <ExternalLink size={12} />
+                      <span>Ventana Limpia</span>
+                    </button>
+                  </div>
+
+                  {/* Guía en 4 pasos */}
+                  <div className="lyrics-mini-guide">
+                    <strong>Pasos para OBS Studio:</strong>
+                    <ol>
+                      <li>Copia el enlace para OBS mostrado arriba.</li>
+                      <li>En OBS, agrega una fuente tipo <strong>Navegador</strong>.</li>
+                      <li>Pega la URL (Ancho: <code>1920</code>, Alto: <code>1080</code>).</li>
+                      <li>¡Listo! La letra se sincroniza sola al dar Play.</li>
                     </ol>
                   </div>
                 </div>
 
-                {/* Columna Derecha: Tarjeta de Código QR */}
-                <div className="lyrics-broadcast-right">
-                  <div className="lyrics-qr-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <QrCode size={15} style={{ color: 'var(--accent)' }} />
-                        <strong style={{ fontSize: 12 }}>Escanear Código QR en Celular o Tablet</strong>
+                {/* Columna 2: Métodos de Soporte / Enlace Alternativo */}
+                <div className="lyrics-subcard">
+                  {isDesktop ? (
+                    <>
+                      <div className="lyrics-subcard__header">
+                        <Radio size={15} style={{ color: '#38bdf8' }} />
+                        <strong style={{ fontSize: 12 }}>Conexión Alternativa por Internet (WebRTC)</strong>
                       </div>
-                      <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>Sin teclear enlaces</span>
-                    </div>
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                        Si necesitas transmitir la letra a alguien que está <strong>fuera del auditorio o red Wi-Fi</strong>, puedes usar la conexión WebRTC a distancia.
+                      </p>
 
-                    {/* Pestañas del QR */}
-                    <div className="lyrics-qr-tabs">
-                      <button
-                        type="button"
-                        className={`lyrics-qr-tab ${qrTarget === 'mobile-prompter' ? 'lyrics-qr-tab--active' : ''}`}
-                        onClick={() => setQrTarget('mobile-prompter')}
-                      >
-                        <Smartphone size={12} />
-                        <span>Prompter Celular (WiFi)</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`lyrics-qr-tab ${qrTarget === 'obs' ? 'lyrics-qr-tab--active' : ''}`}
-                        onClick={() => setQrTarget('obs')}
-                      >
-                        <Tv size={12} />
-                        <span>OBS / Pantalla</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`lyrics-qr-tab ${qrTarget === 'remote' ? 'lyrics-qr-tab--active' : ''}`}
-                        onClick={() => setQrTarget('remote')}
-                      >
-                        <Globe size={12} />
-                        <span>Online WebRTC</span>
-                      </button>
-                    </div>
-
-                    <div className="lyrics-qr-body">
-                      {/* Código QR renderizado */}
-                      <div className="lyrics-qr-img-wrapper">
-                        {qrDataUrl ? (
-                          <img src={qrDataUrl} alt="Código QR Letras OpenMT" className="lyrics-qr-img" />
-                        ) : (
-                          <div style={{ width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 11 }}>
-                            Generando...
-                          </div>
-                        )}
+                      <div className="lyrics-qr-url-box" style={{ marginTop: 6 }} title={generateRemoteUrl()}>
+                        {generateRemoteUrl()}
                       </div>
 
-                      {/* Detalles y Acciones del QR */}
-                      <div className="lyrics-qr-details">
-                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
-                          {qrTarget === 'mobile-prompter' && (
-                            <>
-                              Abre la cámara de tu teléfono o tablet conectada a la misma red WiFi para ver el <strong>teleprompter en vivo</strong> optimizado para vocalistas.
-                            </>
-                          )}
-                          {qrTarget === 'obs' && (
-                            <>
-                              Enlace configurado con salida limpia para captura o monitores de retorno.
-                            </>
-                          )}
-                          {qrTarget === 'remote' && (
-                            <>
-                              Enlace público conectado a tu sesión en tiempo real a través de WebRTC.
-                            </>
-                          )}
-                        </p>
-
-                        <div className="lyrics-qr-url-box" title={currentQrUrl}>
-                          {currentQrUrl}
-                        </div>
-
-                        <div className="lyrics-qr-actions">
-                          <button
-                            type="button"
-                            className={`btn btn--tiny ${copiedQr ? 'btn--play' : 'btn--accent'}`}
-                            onClick={handleCopyQrUrl}
-                          >
-                            {copiedQr ? <Check size={12} /> : <Copy size={12} />}
-                            <span>{copiedQr ? '¡Copiado!' : 'Copiar enlace'}</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn--tiny"
-                            onClick={() => window.open(currentQrUrl, '_blank')}
-                            title="Abrir este enlace en una pestaña nueva"
-                          >
-                            <ExternalLink size={12} />
-                            <span>Abrir</span>
-                          </button>
-                        </div>
+                      <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                        <button
+                          type="button"
+                          className={`btn btn--tiny ${copiedRemote ? 'btn--play' : ''}`}
+                          onClick={handleCopyRemoteRoom}
+                          style={{ minWidth: 140 }}
+                        >
+                          {copiedRemote ? <Check size={12} /> : <Globe size={12} />}
+                          <span>{copiedRemote ? '¡Copiado!' : 'Copiar Enlace Online'}</span>
+                        </button>
                       </div>
-                    </div>
-                  </div>
+
+                      <div className="lyrics-tip-box" style={{ marginTop: 8 }}>
+                        <Lightbulb size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                        <span>Para escenarios locales sin internet, utiliza siempre el <strong>Enlace WiFi de arriba</strong>.</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="lyrics-subcard__header">
+                        <Download size={15} style={{ color: 'var(--meter-ok)' }} />
+                        <strong style={{ fontSize: 12 }}>¿Tocas en vivo sin conexión a Internet?</strong>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.45 }}>
+                        La <strong>aplicación de escritorio de OpenMT (.exe)</strong> incluye su propio servidor local LAN integrado. Te permite conectar celulares y tablets por Wi-Fi de forma totalmente autónoma sin internet.
+                      </p>
+
+                      <div className="row" style={{ gap: 6, marginTop: 10 }}>
+                        <a
+                          href="https://github.com/edgardovalladares/OpenMT/releases"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn--tiny btn--accent"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <Download size={12} />
+                          <span>Descargar OpenMT .exe para Windows</span>
+                        </a>
+                      </div>
+
+                      <div className="lyrics-tip-box" style={{ marginTop: 10 }}>
+                        <Lightbulb size={13} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
+                        <span>Ideal para iglesias, auditorios y salas de ensayo con Wi-Fi local.</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

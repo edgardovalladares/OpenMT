@@ -270,6 +270,15 @@ export function broadcastTimeUpdate(
     }
   }
 
+  // 1.1 IPC directo nativo de Electron para servidor LAN
+  if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
+    try {
+      window.electronAPI.sendLyricsSync(msg);
+    } catch {
+      // ignore
+    }
+  }
+
   // 2. Relay local para OBS en el equipo
   if (now - lastSyncPostTime > 50 || transport !== 'playing') {
     lastSyncPostTime = now;
@@ -326,6 +335,14 @@ export function broadcastLyricsUpdate(
     }
   }
 
+  if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
+    try {
+      window.electronAPI.sendLyricsSync(msg);
+    } catch {
+      // ignore
+    }
+  }
+
   postToServerRelay(msg);
   sendToPeerClients(msg);
 
@@ -371,6 +388,14 @@ export function broadcastFullSync(state: {
   if (channel) {
     try {
       channel.postMessage(msg);
+    } catch {
+      // ignore
+    }
+  }
+
+  if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
+    try {
+      window.electronAPI.sendLyricsSync(msg);
     } catch {
       // ignore
     }
@@ -550,7 +575,21 @@ export function subscribeLyricsSync(
     }
   }
 
+  let unlistenIpc: (() => void) | null = null;
+  if (typeof window !== 'undefined' && window.electronAPI?.onLyricsSync) {
+    try {
+      unlistenIpc = window.electronAPI.onLyricsSync((data) => {
+        if (data) callback(data as LyricsSyncMessage);
+      });
+    } catch {
+      // ignore
+    }
+  }
+
   return () => {
+    if (unlistenIpc) {
+      unlistenIpc();
+    }
     if (channel) {
       channel.removeEventListener('message', handleMessage);
     }

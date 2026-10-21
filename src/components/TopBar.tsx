@@ -7,6 +7,7 @@ import { formatTime } from '../audio/music';
 import { IconOpen, IconPause, IconPlay, IconStop } from './Icons';
 import { TempoPanel } from './TempoPanel';
 import { KeyPanel } from './KeyPanel';
+import { MetronomePanel } from './MetronomePanel';
 import { SongCards } from './SongCards';
 
 function Clock() {
@@ -115,6 +116,7 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
 
       <TempoPanel />
       <KeyPanel />
+      <MetronomePanel />
 
       {/* Panel Letras LRC / OBS */}
       <section className="panel" aria-label="Letras">

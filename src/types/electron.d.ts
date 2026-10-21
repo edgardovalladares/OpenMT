@@ -9,6 +9,8 @@ declare global {
     electronAPI?: {
       isElectron: boolean;
       getLanInfo: () => Promise<ElectronLanInfo>;
+      sendLyricsSync: (msg: unknown) => void;
+      onLyricsSync: (cb: (msg: unknown) => void) => () => void;
     };
   }
 }

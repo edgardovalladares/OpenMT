@@ -167,6 +167,21 @@ export function LyricsView() {
       }
     }, 50);
 
+    // 5. Polling HTTP de respaldo para red local WiFi / LAN
+    let lanIntervalId: ReturnType<typeof setInterval> | null = null;
+    if (isLocalHost()) {
+      lanIntervalId = setInterval(() => {
+        fetch('/api/lyrics/sync')
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.timestamp && data.timestamp !== lastTs) {
+              applySyncData(data);
+            }
+          })
+          .catch(() => {});
+      }, 200);
+    }
+
     // Permitir pantalla completa con doble clic o tecla 'F'
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 'f') {
@@ -182,6 +197,7 @@ export function LyricsView() {
     return () => {
       unsubscribe();
       clearInterval(intervalId);
+      if (lanIntervalId) clearInterval(lanIntervalId);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [room]);

@@ -45,6 +45,20 @@ subscribeLyricsSync((msg) => {
   }
 });
 
+// Emitir sincronización completa inicial al arrancar
+setTimeout(() => {
+  const s = useDaw.getState();
+  broadcastFullSync({
+    rawLrc: s.lyrics.rawLrc,
+    offsetMs: s.lyrics.offsetMs,
+    position: engine.position,
+    transport: engine.transport,
+    duration: engine.duration,
+    projectName: s.projectName,
+    options: s.lyricsOptions,
+  });
+}, 250);
+
 let lastJumpPos = -1;
 
 subscribeFrame(() => {
