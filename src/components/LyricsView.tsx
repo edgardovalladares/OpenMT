@@ -57,12 +57,21 @@ export function LyricsView() {
 
   const prompterContainerRef = useRef<HTMLDivElement>(null);
 
-  // Asegurar fondo 100 % transparente en el documento para OBS Studio y navegadores
+  // Asegurar fondo según el tema configurado para OBS Studio, proyectores y navegadores
   useEffect(() => {
     document.documentElement.classList.add('is-lyrics-view');
     document.body.classList.add('is-lyrics-view');
     const rootEl = document.getElementById('root');
     if (rootEl) rootEl.classList.add('is-lyrics-view');
+
+    const themeClasses = ['lyrics-theme-transparent', 'lyrics-theme-dark', 'lyrics-theme-black', 'lyrics-theme-chroma-green'];
+    document.documentElement.classList.remove(...themeClasses);
+    document.body.classList.remove(...themeClasses);
+    if (rootEl) rootEl.classList.remove(...themeClasses);
+
+    document.documentElement.classList.add(`lyrics-theme-${theme}`);
+    document.body.classList.add(`lyrics-theme-${theme}`);
+    if (rootEl) rootEl.classList.add(`lyrics-theme-${theme}`);
 
     const applyThemeBackground = () => {
       if (theme === 'transparent') {
@@ -79,30 +88,42 @@ export function LyricsView() {
         document.documentElement.style.setProperty('background-color', '#00ff00', 'important');
         document.body.style.setProperty('background', '#00ff00', 'important');
         document.body.style.setProperty('background-color', '#00ff00', 'important');
+        if (rootEl) {
+          rootEl.style.setProperty('background', '#00ff00', 'important');
+          rootEl.style.setProperty('background-color', '#00ff00', 'important');
+        }
       } else if (theme === 'black') {
         document.documentElement.style.setProperty('background', '#000000', 'important');
         document.documentElement.style.setProperty('background-color', '#000000', 'important');
         document.body.style.setProperty('background', '#000000', 'important');
         document.body.style.setProperty('background-color', '#000000', 'important');
+        if (rootEl) {
+          rootEl.style.setProperty('background', '#000000', 'important');
+          rootEl.style.setProperty('background-color', '#000000', 'important');
+        }
       } else if (theme === 'dark') {
         document.documentElement.style.setProperty('background', '#0b0d10', 'important');
         document.documentElement.style.setProperty('background-color', '#0b0d10', 'important');
         document.body.style.setProperty('background', '#0b0d10', 'important');
         document.body.style.setProperty('background-color', '#0b0d10', 'important');
+        if (rootEl) {
+          rootEl.style.setProperty('background', '#0b0d10', 'important');
+          rootEl.style.setProperty('background-color', '#0b0d10', 'important');
+        }
       }
     };
 
     applyThemeBackground();
 
     return () => {
-      document.documentElement.classList.remove('is-lyrics-view');
-      document.body.classList.remove('is-lyrics-view');
+      document.documentElement.classList.remove('is-lyrics-view', ...themeClasses);
+      document.body.classList.remove('is-lyrics-view', ...themeClasses);
       document.documentElement.style.removeProperty('background');
       document.documentElement.style.removeProperty('background-color');
       document.body.style.removeProperty('background');
       document.body.style.removeProperty('background-color');
       if (rootEl) {
-        rootEl.classList.remove('is-lyrics-view');
+        rootEl.classList.remove('is-lyrics-view', ...themeClasses);
         rootEl.style.removeProperty('background');
         rootEl.style.removeProperty('background-color');
       }
@@ -278,60 +299,56 @@ export function LyricsView() {
         </div>
       ) : mode === 'lowerthird' ? (
         /* MODO TERCIO INFERIOR (OPTIMIZADO PARA OBS STUDIO) */
-        <div className="lyrics-lowerthird">
-          <div className="lyrics-lowerthird__plate">
-            {activeLine && activeLine.text ? (
-              <div className="lyrics-lowerthird__current">
-                {transformText(activeLine.text)}
-              </div>
-            ) : activeLine && !activeLine.text ? (
-              <div className="lyrics-lowerthird__current">
-                <span className="lyrics-lowerthird__instrumental">
-                  <Sparkles size={16} style={{ verticalAlign: -2, marginRight: 6 }} />
-                  Instrumental
-                </span>
-              </div>
-            ) : (
-              <div className="lyrics-lowerthird__current lyrics-lowerthird__current--intro">
-                —
-              </div>
-            )}
+        (activeLine?.text || (showNext && nextLine?.text)) ? (
+          <div className="lyrics-lowerthird">
+            <div className="lyrics-lowerthird__plate">
+              {activeLine && activeLine.text ? (
+                <div className="lyrics-lowerthird__current">
+                  {transformText(activeLine.text)}
+                </div>
+              ) : activeLine && !activeLine.text ? (
+                <div className="lyrics-lowerthird__current">
+                  <span className="lyrics-lowerthird__instrumental">
+                    <Sparkles size={16} style={{ verticalAlign: -2, marginRight: 6 }} />
+                    Instrumental
+                  </span>
+                </div>
+              ) : null}
 
-            {showNext && nextLine && nextLine.text && (
-              <div className="lyrics-lowerthird__next">
-                {transformText(nextLine.text)}
-              </div>
-            )}
+              {showNext && nextLine && nextLine.text && (
+                <div className="lyrics-lowerthird__next">
+                  {transformText(nextLine.text)}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : null
       ) : (
         /* MODO PANTALLA COMPLETA / AUDITORIO */
-        <div className="lyrics-fullscreen">
-          <div className="lyrics-fullscreen__content">
-            {activeLine && activeLine.text ? (
-              <div className="lyrics-fullscreen__current">
-                {transformText(activeLine.text)}
-              </div>
-            ) : activeLine && !activeLine.text ? (
-              <div className="lyrics-fullscreen__current">
-                <span className="lyrics-fullscreen__instrumental">
-                  <Sparkles size={20} style={{ verticalAlign: -2, marginRight: 8 }} />
-                  Instrumental
-                </span>
-              </div>
-            ) : (
-              <div className="lyrics-fullscreen__current lyrics-fullscreen__current--intro">
-                —
-              </div>
-            )}
+        (activeLine?.text || (showNext && nextLine?.text)) ? (
+          <div className="lyrics-fullscreen">
+            <div className="lyrics-fullscreen__content">
+              {activeLine && activeLine.text ? (
+                <div className="lyrics-fullscreen__current">
+                  {transformText(activeLine.text)}
+                </div>
+              ) : activeLine && !activeLine.text ? (
+                <div className="lyrics-fullscreen__current">
+                  <span className="lyrics-fullscreen__instrumental">
+                    <Sparkles size={20} style={{ verticalAlign: -2, marginRight: 8 }} />
+                    Instrumental
+                  </span>
+                </div>
+              ) : null}
 
-            {showNext && nextLine && nextLine.text && (
-              <div className="lyrics-fullscreen__next">
-                {transformText(nextLine.text)}
-              </div>
-            )}
+              {showNext && nextLine && nextLine.text && (
+                <div className="lyrics-fullscreen__next">
+                  {transformText(nextLine.text)}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : null
       )}
     </main>
   );

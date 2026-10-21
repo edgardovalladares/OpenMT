@@ -266,7 +266,7 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 .lane__missing-text { font-size: 11px; font-weight: 600; color: var(--meter-hot); }
 
 /* Playhead absoluto sin ocupar celdas del CSS grid */
-.playhead-layer { position: absolute; top: 24px; bottom: 0; left: var(--head-w); right: 0; pointer-events: none; z-index: 2; }
+.playhead-layer { position: absolute; top: 24px; bottom: 0; pointer-events: none; z-index: 2; }
 .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--playhead); box-shadow: 0 0 6px var(--playhead); }
 
 /* ---------- Información de pista en cabecera ---------- */
@@ -1197,6 +1197,118 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   user-select: none;
 }
 
+/* ---------- Panel de Pads Continuos Worship ---------- */
+.pad-badge--active {
+  color: var(--accent) !important;
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border)) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.pad-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  width: 290px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pad-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.pad-version-selector {
+  display: flex;
+  gap: 4px;
+}
+.pad-matrix {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.pad-key-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 2px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s ease;
+  user-select: none;
+}
+.pad-key-name {
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1.1;
+  color: var(--text);
+}
+.pad-key-minor {
+  font-size: 9px;
+  opacity: 0.65;
+  color: var(--text-dim);
+}
+.pad-key-btn:hover {
+  border-color: var(--accent);
+  background: var(--bg-raised);
+}
+.pad-key-btn--active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.pad-key-btn--active .pad-key-name {
+  color: var(--on-accent) !important;
+}
+.pad-key-btn--active .pad-key-minor {
+  color: var(--on-accent) !important;
+  opacity: 0.85;
+}
+.pad-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+}
+.pad-sync-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.pad-autokey-badge {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--meter-ok);
+  background: color-mix(in srgb, var(--meter-ok) 18%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.pad-volume-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Pestaña 3: Transmisión, Enlaces y Código QR */
 .lyrics-broadcast-container {
   display: flex;
@@ -1569,19 +1681,42 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 }
 
 /* Soporte para visor de letras transparente en OBS Studio y navegadores */
-html.is-lyrics-view,
-body.is-lyrics-view,
-#root.is-lyrics-view,
-body.is-lyrics-view #root {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
+html.is-lyrics-view.lyrics-theme-transparent,
+body.is-lyrics-view.lyrics-theme-transparent,
+#root.is-lyrics-view.lyrics-theme-transparent,
+body.is-lyrics-view.lyrics-theme-transparent #root,
 html:has(.lyrics-stage--transparent),
 body:has(.lyrics-stage--transparent),
 #root:has(.lyrics-stage--transparent) {
   background: transparent !important;
   background-color: transparent !important;
+}
+
+html.is-lyrics-view.lyrics-theme-dark,
+body.is-lyrics-view.lyrics-theme-dark,
+#root.is-lyrics-view.lyrics-theme-dark,
+.lyrics-stage--dark {
+  background: #0b0d10 !important;
+  background-color: #0b0d10 !important;
+  color: #f0f3f6;
+}
+
+html.is-lyrics-view.lyrics-theme-black,
+body.is-lyrics-view.lyrics-theme-black,
+#root.is-lyrics-view.lyrics-theme-black,
+.lyrics-stage--black {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #ffffff;
+}
+
+html.is-lyrics-view.lyrics-theme-chroma-green,
+body.is-lyrics-view.lyrics-theme-chroma-green,
+#root.is-lyrics-view.lyrics-theme-chroma-green,
+.lyrics-stage--chroma-green {
+  background: #00ff00 !important;
+  background-color: #00ff00 !important;
+  color: #ffffff;
 }
 
 /* Temas del visor */
@@ -1965,5 +2100,44 @@ body:has(.lyrics-stage--transparent),
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
+
+/* ---------- Responsividad y Adaptabilidad ---------- */
+@media (max-width: 1024px) {
+  .topbar {
+    gap: 4px;
+    padding: 4px 6px;
+  }
+  .panel {
+    padding: 3px 6px 5px;
+  }
+  .panel--setlist {
+    max-width: 440px;
+  }
+}
+
+@media (max-width: 768px) {
+  .btn__label-responsive {
+    display: none;
+  }
+  .pad-popover,
+  .metronome-popover {
+    max-width: calc(100vw - 20px);
+    width: 280px;
+    left: auto;
+    right: 0;
+  }
+  .topbar__brand {
+    padding: 0 4px 0 0;
+  }
+  .topbar__logo-img {
+    height: 48px;
+    width: 48px;
+  }
+  .panel--setlist {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
 
 

@@ -102,6 +102,19 @@ export function Lane({ track, duration }: { track: TrackState; duration: number 
         ctx.lineTo(xEnd, h);
         ctx.stroke();
       }
+
+      // 6. Línea divisoria al final del clip dentro de la línea de tiempo extendida
+      if (track.duration > 0 && track.duration < duration) {
+        const xTrackEnd = Math.round((track.duration / duration) * w);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 1 * dpr;
+        ctx.setLineDash([3 * dpr, 3 * dpr]);
+        ctx.beginPath();
+        ctx.moveTo(xTrackEnd, 0);
+        ctx.lineTo(xTrackEnd, h);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     };
     draw();
     const ro = new ResizeObserver(draw);

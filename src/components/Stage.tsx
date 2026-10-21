@@ -10,7 +10,15 @@ import { MixerStrip, TrackInfo } from './MixerStrip';
 import { MasterStrip } from './MasterStrip';
 import { EmptyState } from './EmptyState';
 
-function Playhead({ duration, headWidth }: { duration: number; headWidth: number }) {
+function Playhead({
+  duration,
+  headWidth,
+  timelineWidth,
+}: {
+  duration: number;
+  headWidth: number;
+  timelineWidth: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(
     () => subscribeFrame(() => {
@@ -19,7 +27,10 @@ function Playhead({ duration, headWidth }: { duration: number; headWidth: number
     [duration],
   );
   return (
-    <div className="playhead-layer" style={{ left: `${headWidth}px`, top: 28 }}>
+    <div
+      className="playhead-layer"
+      style={{ left: `${headWidth}px`, width: `${timelineWidth}px`, top: 28 }}
+    >
       <div className="playhead" ref={ref} />
     </div>
   );
@@ -44,7 +55,9 @@ export function Stage({ layout }: { layout: 'bottom' | 'left' }) {
 
   if (tracks.length === 0) return <main className="stage"><EmptyState /></main>;
 
-  const duration = Math.max(0.001, ...tracks.map((t) => t.duration));
+  const maxTrackDuration = Math.max(0.001, ...tracks.map((t) => t.duration));
+  // Margen de respiración extendido (línea de tiempo continua sin cortes al hacer zoom)
+  const timelineDuration = maxTrackDuration + Math.max(20, maxTrackDuration * 0.15);
   const headWidth = layout === 'left' ? 390 : 240;
   const baseTimelineWidth = Math.max(600, stageWidth - headWidth);
   const timelineWidth = Math.round(baseTimelineWidth * zoom);
@@ -71,7 +84,7 @@ export function Stage({ layout }: { layout: 'bottom' | 'left' }) {
         }}
       >
         {/* Fila 1: Secciones y Región de Bucle cuantizado */}
-        <SectionsBar duration={duration} />
+        <SectionsBar duration={timelineDuration} />
 
         {/* Fila 2: Esquina con Zoom y Regla graduada */}
         <div className="grid__corner">
@@ -107,7 +120,7 @@ export function Stage({ layout }: { layout: 'bottom' | 'left' }) {
             </button>
           </div>
         </div>
-        <Ruler duration={duration} />
+        <Ruler duration={timelineDuration} />
 
         {/* Filas 3+: Pistas de audio */}
         {tracks.map((t) => (
@@ -115,7 +128,7 @@ export function Stage({ layout }: { layout: 'bottom' | 'left' }) {
             <div className="grid__head" style={{ borderLeft: `4px solid var(--track-${t.colorIndex})` }}>
               {layout === 'left' ? <MixerStrip id={t.id} orientation="horizontal" /> : <TrackInfo t={t} />}
             </div>
-            <Lane track={t} duration={duration} />
+            <Lane track={t} duration={timelineDuration} />
           </Fragment>
         ))}
 
@@ -126,7 +139,7 @@ export function Stage({ layout }: { layout: 'bottom' | 'left' }) {
           </>
         )}
 
-        <Playhead duration={duration} headWidth={headWidth} />
+        <Playhead duration={timelineDuration} headWidth={headWidth} timelineWidth={timelineWidth} />
       </div>
     </main>
   );

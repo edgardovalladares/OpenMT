@@ -13,11 +13,12 @@ export interface MetronomeConfig {
 
 class Metronome {
   private isRunning = false;
+  private isArmed = false;
   private bpm = 120;
   private timeSignature: TimeSignature = '4/4';
   private sound: MetronomeSound = 'digital';
   private volume = 0.75;
-  private syncWithDaw = true;
+  private syncWithDaw = false;
 
   private currentBeat = 0;
   private nextNoteTime = 0.0;
@@ -29,13 +30,13 @@ class Metronome {
   private stateListeners = new Set<(running: boolean) => void>();
 
   constructor() {
-    // Sincronizar automáticamente con el transporte del DAW si syncWithDaw está activo
+    // Sincronizar con el transporte del DAW SOLO si el metrónomo está armado por el usuario
     engine.onState((transport) => {
-      if (this.syncWithDaw) {
+      if (this.syncWithDaw && this.isArmed) {
         if (transport === 'playing') {
           this.start(true);
         } else if (transport === 'stopped' || transport === 'paused') {
-          if (this.isRunning && this.syncWithDaw) {
+          if (this.isRunning) {
             this.stop(false);
           }
         }
@@ -286,6 +287,9 @@ class Metronome {
 
   start(fromDawSync = false) {
     if (this.isRunning && !fromDawSync) return;
+    if (!fromDawSync) {
+      this.isArmed = true;
+    }
     const ctx = this.getAudioContext();
     if (ctx && ctx.state === 'suspended') {
       void ctx.resume();
@@ -300,6 +304,9 @@ class Metronome {
   }
 
   stop(manual = true) {
+    if (manual) {
+      this.isArmed = false;
+    }
     this.isRunning = false;
     if (this.timerWorker) {
       clearInterval(this.timerWorker);
@@ -307,7 +314,6 @@ class Metronome {
     }
     this.notifyState(false);
     this.currentBeat = 0;
-    // Si se detiene manualmente, desactivar temporalmente syncWithDaw para que no arranque solo
     if (manual) {
       for (const fn of this.listeners) {
         fn(-1, this.beatsPerBar, false);

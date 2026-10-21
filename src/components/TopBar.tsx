@@ -7,6 +7,7 @@ import { formatTime } from '../audio/music';
 import { IconOpen, IconPause, IconPlay, IconStop } from './Icons';
 import { TempoPanel } from './TempoPanel';
 import { KeyPanel } from './KeyPanel';
+import { PadPanel } from './PadPanel';
 import { MetronomePanel } from './MetronomePanel';
 import { SongCards } from './SongCards';
 
@@ -99,7 +100,7 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
             aria-label="Deshacer"
           >
             <Undo2 size={14} />
-            <span>Deshacer</span>
+            <span className="btn__label-responsive">Deshacer</span>
           </button>
           <button
             className="btn"
@@ -109,13 +110,14 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
             aria-label="Rehacer"
           >
             <Redo2 size={14} />
-            <span>Rehacer</span>
+            <span className="btn__label-responsive">Rehacer</span>
           </button>
         </div>
       </section>
 
       <TempoPanel />
       <KeyPanel />
+      <PadPanel />
       <MetronomePanel />
 
       {/* Panel Letras LRC / OBS */}

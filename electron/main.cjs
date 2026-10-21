@@ -42,6 +42,10 @@ const MIME_TYPES = {
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.wasm': 'application/wasm',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
 };
 
 function getLocalIpAddresses() {
@@ -141,7 +145,14 @@ function startLanServer(distDir, onListening) {
       return;
     }
 
-    let filePath = path.join(distDir, pathname === '/' ? 'index.html' : pathname);
+    let decodedPath = pathname;
+    try {
+      decodedPath = decodeURIComponent(pathname);
+    } catch {
+      // ignore
+    }
+
+    let filePath = path.join(distDir, decodedPath === '/' ? 'index.html' : decodedPath);
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
       filePath = path.join(distDir, 'index.html');
     }
