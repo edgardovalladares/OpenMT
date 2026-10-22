@@ -21,10 +21,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%20Setup%202.1.0.exe">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT.Setup.2.1.0.exe">
     <img src="https://img.shields.io/badge/Descargar-Instalador%20Windows%20(.exe)-2ea44f?style=for-the-badge&logo=windows" alt="Descargar Instalador Windows" />
   </a>
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%202.1.0.exe">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT.2.1.0.exe">
     <img src="https://img.shields.io/badge/Descargar-Versi%C3%B3n%20Portable%20(.exe)-0969da?style=for-the-badge&logo=windows" alt="Descargar Portable Windows" />
   </a>
 </p>
@@ -76,8 +76,8 @@ Puedes descargar los instaladores y binarios oficiales directamente desde la sec
 
 | Paquete | Archivo | Tamaño | Descripción |
 | :--- | :--- | :---: | :--- |
-| **Instalador Windows** | [`OpenMT Setup 2.1.0.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%20Setup%202.1.0.exe) | ~479 MB | Instalador completo con asistente NSIS, accesos directos y desinstalador. Incluye todos los pads worship offline y servidor LAN. |
-| **Versión Portable** | [`OpenMT 2.1.0.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%202.1.0.exe) | ~479 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
+| **Instalador Windows** | [`OpenMT.Setup.2.1.0.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT.Setup.2.1.0.exe) | ~479 MB | Instalador completo con asistente NSIS, accesos directos y desinstalador. Incluye todos los pads worship offline y servidor LAN. |
+| **Versión Portable** | [`OpenMT.2.1.0.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT.2.1.0.exe) | ~479 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
 
 ---
 
