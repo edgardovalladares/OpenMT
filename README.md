@@ -5,8 +5,8 @@
 <h1 align="center">OpenMT — Open Multitrack Audio Workstation</h1>
 
 <p align="center">
-  <strong>Estación de trabajo y reproductor de audio multipista profesional que se ejecuta 100 % en el navegador web.</strong><br />
-  Procesamiento en tiempo real con Web Audio API, WebAssembly (WASM), Web Workers y Time-Stretch / Pitch-Shift de alta fidelidad.
+  <strong>Estación de trabajo y reproductor de audio multipista profesional para directos, ensayos y producción.</strong><br />
+  Disponible en versión web y como aplicación de escritorio nativa para Windows (.exe instalable y portable).
 </p>
 
 <p align="center">
@@ -14,11 +14,19 @@
   <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Vite-8.x-purple?logo=vite" alt="Vite" />
-  <img src="https://img.shields.io/badge/Electron-Desktop-informational?logo=electron" alt="Electron Desktop" />
+  <img src="https://img.shields.io/badge/Electron-Windows%20.exe-informational?logo=electron" alt="Electron Desktop" />
   <img src="https://img.shields.io/badge/Web%20Audio%20API-Native-success" alt="Web Audio API" />
   <img src="https://img.shields.io/badge/WebAssembly-WASM-orange?logo=webassembly" alt="WebAssembly" />
   <img src="https://img.shields.io/badge/Zero%20Server-100%25%20Client--Side-green" alt="100% Client-Side" />
-  <img src="https://img.shields.io/badge/Zero%20CDN-Local%20Only-brightgreen" alt="Zero CDN" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%20Setup%202.1.0.exe">
+    <img src="https://img.shields.io/badge/Descargar-Instalador%20Windows%20(.exe)-2ea44f?style=for-the-badge&logo=windows" alt="Descargar Instalador Windows" />
+  </a>
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%202.1.0.exe">
+    <img src="https://img.shields.io/badge/Descargar-Versi%C3%B3n%20Portable%20(.exe)-0969da?style=for-the-badge&logo=windows" alt="Descargar Portable Windows" />
+  </a>
 </p>
 
 ---
@@ -26,27 +34,50 @@
 ## 📖 Tabla de Contenidos
 
 1. [Acerca de OpenMT](#-acerca-de-openmt)
-2. [Características Principales](#-características-principales)
-3. [Tecnologías Utilizadas](#-tecnologías-utilizadas)
-4. [Arquitectura del Motor de Audio](#-arquitectura-del-motor-de-audio)
-5. [Compatibilidad de Navegadores y Sistemas](#-compatibilidad-de-navegadores-y-sistemas)
-6. [Instalación y Ejecución en Local](#-instalación-y-ejecución-en-local)
-7. [Guía de Uso Paso a Paso](#-guía-de-uso-paso-a-paso)
-8. [Letras Sincronizadas (LRC / OBS)](#-11-letras-sincronizadas-lrc-y-transmisión-en-vivo-para-obs-y-pantallas)
+2. [Descargas y Versiones (.exe)](#-descargas-y-versiones-oficiales)
+3. [Características Principales](#-características-principales)
+   - [Motor Multipista Profesional](#-1-motor-multipista-profesional-hasta-20-pistas)
+   - [Time-Stretch y Pitch-Shift con WASM](#-2-time-stretching-y-pitch-shifting-en-tiempo-real)
+   - [Bloqueo de Tono por Pista (Pitch Lock)](#-3-bloqueo-de-tono-por-pista-pitch-lock)
+   - [Pads Continuos Worship con Auto-Tonalidad](#-4-reproductor-de-pads-continuos-worship-ambient-pads)
+   - [Metrónomo Profesional Integrado](#-5-metrónomo-profesional-integrado)
+   - [Línea de Tiempo Continua e Infinita](#-6-línea-de-tiempo-continua-e-infinita-timeline)
+   - [Secciones de Canción y Transiciones en Cola](#-7-secciones-de-canción-y-transiciones-en-cola-queued-jumps)
+   - [Gestor de Repertorio / Setlist por Pestañas](#-8-gestor-de-repertorio--setlist-por-pestañas-en-vivo)
+   - [Letras Sincronizadas (LRC), Código QR y OBS Studio](#-9-letras-sincronizadas-lrc-código-qr-y-salida-limpia-para-obs)
+   - [Aplicación de Escritorio y Servidor LAN Local](#-10-aplicación-de-escritorio-electron-exe-y-servidor-lan-local-wifi-sin-internet)
+   - [Recorte de Clips y Fundidos (Fade In / Out)](#-11-recorte-de-clips-y-desvanecimientos-fade-in--fade-out)
+   - [Historial Deshacer y Rehacer](#-12-historial-de-deshacer-y-rehacer-undo--redo)
+   - [Exportación Master (WAV y MP3)](#-13-exportación-de-audio-master-wav-y-mp3)
+4. [Tecnologías Utilizadas](#-tecnologías-utilizadas)
+5. [Arquitectura del Motor de Audio](#-arquitectura-del-motor-de-audio)
+6. [Compatibilidad de Navegadores y Sistemas](#-compatibilidad-de-navegadores-y-sistemas)
+7. [Instalación y Ejecución en Local](#-instalación-y-ejecución-en-local)
+8. [Guía de Uso Paso a Paso](#-guía-de-uso-paso-a-paso)
 9. [Atajos de Teclado](#-atajos-de-teclado)
 10. [Estructura del Proyecto](#-estructura-del-proyecto)
-11. [Exportación y Renderizado](#-exportación-y-renderizado)
-12. [Privacidad y Seguridad](#-privacidad-y-seguridad)
-13. [Licencia y Créditos](#-licencia-y-créditos)
+11. [Privacidad y Seguridad](#-privacidad-y-seguridad)
+12. [Licencia y Créditos](#-licencia-y-créditos)
 
 ---
 
 ## 🎯 Acerca de OpenMT
 
-**OpenMT** es una solución ligera, potente y moderna para la reproducción, mezcla, ensayo y manipulación de pistas de audio multipista (*stems* o *multitracks*). Diseñada para músicos, directores de alabanza, ingenieros de mezcla y productores que necesitan cambiar el tono, alterar la velocidad, ensayar por secciones y reproducir secuencias multipista sin depender de DAWs pesados de escritorio ni de servicios en la nube con suscripciones.
+**OpenMT** es una estación de trabajo de audio digital multipista (*multitrack / stems player*) rápida, libre y sin suscripciones. Diseñada especialmente para músicos, iglesias, directores de alabanza, bandas en vivo y productores que requieren manipular secuencias, cambiar el tono, sincronizar tempos, disparar pads continuos, proyectar letras en vivo en pantallas y ensayar por secciones con latencia cero.
 
 > [!IMPORTANT]
-> **Privacidad Absoluta (100 % en tu equipo):** Todos los archivos de audio se procesan, decodifican, analizan y renderizan directamente en la memoria RAM de tu navegador web. Ningún archivo ni dato personal sale de tu equipo hacia servidores externos.
+> **Privacidad Absoluta y Procesamiento Local:** Todos los archivos de audio se decodifican, procesan y reproducen localmente en tu equipo. Ninguna pista sale jamás a servidores externos ni requiere conexión a internet para sonar.
+
+---
+
+## 📦 Descargas y Versiones Oficiales
+
+Puedes descargar los instaladores y binarios oficiales directamente desde la sección de **[Releases de GitHub](https://github.com/edgardovalladares/OpenMT/releases/tag/v2.1.0)**:
+
+| Paquete | Archivo | Tamaño | Descripción |
+| :--- | :--- | :---: | :--- |
+| **Instalador Windows** | [`OpenMT Setup 2.1.0.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%20Setup%202.1.0.exe) | ~479 MB | Instalador completo con asistente NSIS, accesos directos y desinstalador. Incluye todos los pads worship offline y servidor LAN. |
+| **Versión Portable** | [`OpenMT 2.1.0.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v2.1.0/OpenMT%202.1.0.exe) | ~479 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
 
 ---
 
@@ -54,15 +85,15 @@
 
 ### 🎚️ 1. Motor Multipista Profesional (hasta 20 pistas)
 - **Capacidad ampliada:** Carga y reproduce de forma sincronizada hasta **20 pistas estéreo simultáneas**.
-- **Amplio soporte de formatos:** Compatible con `WAV`, `MP3`, `FLAC`, `OGG`, `M4A`, `AAC`, `Opus` y más.
+- **Soporte exhaustivo de formatos:** Compatible con `WAV`, `MP3`, `FLAC`, `OGG`, `M4A`, `AAC`, `Opus` y más.
 - **Tira de canal completa por pista:**
-  - Fader de volumen analógico calibrado de `-60 dB` a `+6 dB` con tope de ganancia unitaria en `0 dB` (doble clic para volver a 0 dB).
-  - Control de balance estéreo (Pan `-100 % L` a `+100 % R`) con **efecto imán en el centro** (snapping magnético automático a `C`), indicador visual (`C`, `L50`, `R25`) y restablecimiento a centro con **doble clic**.
+  - Fader analógico calibrado de `-60 dB` a `+6 dB` con tope de ganancia unitaria en `0 dB` (doble clic para volver a 0 dB).
+  - Control de balance estéreo (Pan `-100 % L` a `+100 % R`) con **efecto imán en el centro** (snapping magnético a `C`), indicador visual (`C`, `L50`, `R25`) y restablecimiento con **doble clic**.
   - Botones dedicados de **Mute (M)** y **Solo (S)** con lógica excluyente inteligente.
-  - Indicadores de nivel estéreo independientes (L/R) renderizados en `<canvas>` a **60 fps** con memoria de pico (*peak-hold*) y advertencia de saturación (*clipping*).
+  - Vúmetros estéreo independientes (L/R) renderizados en `<canvas>` a **60 fps** con retención de pico (*peak-hold*) y advertencia de saturación (*clipping*).
 
 ### ⚡ 2. Time-Stretching y Pitch-Shifting en Tiempo Real
-- Impulsado por el algoritmo de última generación **Signalsmith Stretch** compilado en **WebAssembly (WASM)** y ejecutado en un nodo de **AudioWorklet**.
+- Impulsado por el algoritmo **Signalsmith Stretch** compilado en **WebAssembly (WASM)** y ejecutado en un nodo de **AudioWorklet**.
 - **Control de Tempo independiente:** Modifica la velocidad del 50 % al 200 % sin alterar la afinación musical.
 - **Función Key Lock:** Alterna entre estiramiento temporal puro o simulación de velocidad variable tipo vinilo.
 - **Corrección de octava:** Botones rápidos `÷2` y `×2` para compensar tempos detectados.
@@ -74,73 +105,77 @@
 - Al transponer la tonalidad maestra de la canción, las pistas bloqueadas permanecen en su afinación original para evitar artefactos o desafinaciones en elementos percusivos.
 - Modal dedicado para gestionar rápidamente el bloqueo individual o por lotes.
 
-### 🔁 4. Secciones de Canción y Transiciones en Cola (*Queued Jumps*)
+### 🌊 4. Reproductor de Pads Continuos Worship (Ambient Pads)
+- **2 Colecciones completas integradas:**
+  - **Essentials:** Sonido cálido, acústico y orgánico.
+  - **Omnisphere:** Sonido etéreo, profundo y envolvente para crear atmósfera de adoración.
+- **Reproducción continua en bucle (`loop = true`):** El pad nunca se detiene; llena los vacíos entre canciones y transiciones.
+- **Fundido cruzado suave (*crossfade*) de 1.8 segundos:** Al cambiar de tonalidad o de versión, la nota anterior se desvanece de manera imperceptible mientras la nueva entra con total naturalidad, libre de clics o cortes bruscos.
+- **Auto-detección inteligente de tonalidad:** Sigue la tonalidad activa del DAW en tiempo real. Resuelve automáticamente tonalidades mayores y menores relativas (por ejemplo: si tu canción está en *Mi menor (Em)*, selecciona automáticamente el pad de *Sol (G)*; si está en *Si menor (Bm)*, selecciona el pad de *Re (D)*).
+- **Matriz de 12 notas táctiles (C a B):** Acceso rápido para pulsar cualquier nota manualmente.
+- Control de volumen independiente con deslizador continuo.
+
+### ⏱️ 5. Metrónomo Profesional Integrado
+- **Programador Web Audio de alta precisión (*lookahead* de 25 ms):** Cero desfases o pérdida de pulso.
+- **Control de Tempo:** Rango de 30 a 300 BPM con ajuste fino de 1 en 1, pasos de 5 BPM y botón **TAP TEMPO** en tiempo real.
+- **Selector de Compases / Métricas:** Soporta `4/4`, `3/4`, `2/4`, `6/8`, `5/4` y `7/8` con acentos dinámicos automáticos en el tiempo 1 y tiempos secundarios en métricas compuestas.
+- **5 Sonidos sintetizados nativos (100 % offline):**
+  - *Digital (Beep)*
+  - *Madera (Clave / Woodblock)*
+  - *Cencerro (808 Cowbell)*
+  - *Aro (Rimshot)*
+  - *Mecánico*
+- **Luces de pulso en tiempo real (`metronome-dots`):** Indicadores visuales que parpadean al ritmo del compás con color destacado para el tiempo acentuado.
+- **Control manual estricto:** El metrónomo solo sonará cuando tú decidas activarlo manualmente desde su botón de reproducción (no arrancará de sorpresa al dar Play al DAW).
+
+### 📏 6. Línea de Tiempo Continua e Infinita (Timeline)
+- **Margen de respiración extendido:** Añade espacio continuo al final de las pistas de audio para evitar que el clip o el cabezal se corten abruptamente contra el borde de la pantalla.
+- **Sincronización subpíxel del cabezal (*Playhead*):** El marcador de reproducción se desplaza con exactitud a lo largo de todo el zoom horizontal, permaneciendo siempre en perfecta sincronía con el audio.
+- Línea sutil de delimitación de pista y regla con marcas de tiempo continuas.
+
+### 🔁 7. Secciones de Canción y Transiciones en Cola (*Queued Jumps*)
 - **Detección inteligente de secciones:** Identifica nombres comunes en pistas guía o marcadores (`Intro`, `Verso 1`, `Coro`, `Puente`, `Solo`, `Outro`).
 - **Modo Bucle por Sección:** Repite indefinidamente la sección seleccionada para ensayos específicos.
 - **Transiciones en cola sin cortes:** Haz clic en otra sección durante la reproducción y OpenMT la colocará en cola con un indicador visual, realizando el cambio **al final exacto de la sección actual** para mantener el compás musical.
 - Botón de salto inmediato opcional para transiciones directas.
 
-### 🔍 5. Timeline con Zoom Horizontal Interactivo
-- Visualización de formas de onda dinámicas por pista.
-- Controles de zoom horizontal en la esquina de la regla (`[-]`, `[100%]`, `[+]`).
-- Atajos rápidos de zoom con rueda de ratón: `Ctrl + Rueda` o `Alt + Rueda`.
-- Marcador de tiempo (*playhead*) con sincronización de sub-píxeles.
+### 🎶 8. Gestor de Repertorio / Setlist por Pestañas (En Vivo)
+- **Múltiples canciones dentro del mismo proyecto:** Pestañas superiores para organizar tu repertorio en vivo (`Canción 1`, `Canción 2`, etc.).
+- **Gestión fluida del concierto:** Añade canciones, renómbralas con doble clic, duplícalas, reordénalas o bórralas en cualquier momento.
+- **Optimización extrema de memoria RAM y CPU:**
+  - Al cambiar de pestaña, OpenMT desmonta y libera inmediatamente los grafos de nodos Web Audio y los procesos WASM de la canción inactiva, conservando sus buffers y configuración listos para un arranque instantáneo.
+- **Persistencia en el archivo de proyecto:** Al guardar el proyecto `.openmt`, todas las canciones del repertorio con sus pistas, letras y ajustes se exportan conjuntamente.
 
-### ✂️ 6. Recorte de Clips y Desvanecimientos (Fade In / Fade Out)
+### 🎤 9. Letras Sincronizadas (LRC), Código QR y Salida Limpia para OBS
+- **Soporte de formato estándar LRC (.lrc / .txt):** Carga archivos de letra sincronizados o pégalos directamente con marcas de tiempo `[mm:ss.xx]`.
+- **Enlace global único para todo el setlist:** Configuras OBS Studio o las pantallas una sola vez con tu sala persistente. Al cambiar de canción en OpenMT, las letras en OBS y celulares se actualizan automáticamente sin necesidad de tocar nada.
+- **Protección de enlace (Candado Lock / Unlock):** Bloquea la sala de transmisión para prevenir cambios accidentales o regenera una nueva sala cuando lo decidas.
+- **Generador de Código QR en vivo:** Muestra un código QR instantáneo para que vocalistas y músicos en el escenario apunten con la cámara de sus teléfonos o tablets.
+- **Salida 100 % limpia sin fondos forzados:**
+  - Los modos *Tercio inferior* y *Pantalla completa* no muestran recuadros ni guiones flotantes cuando no hay texto cantado o durante pausas instrumentales.
+  - **4 Fondos seleccionables:** `Transparente` (nativo para fuentes navegador en OBS), `Oscuro elegante (#0b0d10)`, `Negro puro (#000000)` y `Croma verde (#00FF00)`.
+
+### 🖥️ 10. Aplicación de Escritorio Electron (.exe) y Servidor LAN Local (WiFi sin Internet)
+- **Versión nativa instalable y portable para Windows:** Empaquetado completo con Electron y electron-builder (`OpenMT Setup 2.1.0.exe` y versión portable).
+- **Servidor LAN HTTP + SSE integrado:** En la aplicación de escritorio, OpenMT inicia su propio servidor local en el puerto `3000` y detecta tu IP de red local (ej. `http://192.168.1.X:3000`).
+- **Acceso en red local para todo el equipo:** Cualquier teléfono, tablet o computadora conectada a la misma red Wi-Fi puede escanear el QR y ver el teleprompter en tiempo real durante ensayos o conciertos sin depender de conexión a internet.
+- **Canal IPC nativo:** Comunicación bidireccional inmediata entre el renderizador y el servidor local en la versión de escritorio.
+
+### ✂️ 11. Recorte de Clips y Desvanecimientos (Fade In / Fade Out)
 - Edición no destructiva por pista con el editor de clips integrado.
 - Ajuste de punto de inicio (*Start Offset*) y punto de final (*End Offset*).
 - Desvanecimiento de entrada (*Fade In*) y desvanecimiento de salida (*Fade Out*) configurables en milisegundos con curvas lineales y visualización en la onda.
 
-### ↩️ 7. Historial de Deshacer y Rehacer (Undo / Redo)
+### ↩️ 12. Historial de Deshacer y Rehacer (Undo / Redo)
 - Pila de historial integrada que registra cambios en faders, panorámicas, mutes, solos, tono, tempo, secciones y edición de clips.
 - Atajos universales: `Ctrl + Z` (deshacer) y `Ctrl + Y` o `Ctrl + Shift + Z` (rehacer).
 
-### 💾 8. Gestión de Proyectos y Reconexión Inteligente (*Smart Relink*)
-- **Exportar e importar proyectos en JSON:** Guarda toda la sesión (nombre, volumen, pan, tono, tempo, secciones, bloqueos, recortes y zoom) en un archivo `.json` ligero.
-- **Biblioteca de proyectos guardados:** Persistencia automática en el navegador con buscador en tiempo real, recarga, duplicado y eliminación.
-- **Reconexión de archivos (Relink Modal):** Si mueves o renombras tus archivos de audio, OpenMT detecta las pistas faltantes y te permite reconectarlas archivo por archivo o mediante un selector de carpetas por lotes.
-
-### 📤 9. Exportación de Audio Master (WAV y MP3)
+### 📤 13. Exportación de Audio Master (WAV y MP3)
 - Renderizado fuera de línea acelerado (*offline render*) mediante `OfflineAudioContext`.
 - Aplica fielmente todos los volúmenes, faders, panorámicas, silencios, time-stretch, transposición tonal, recortes y fundidos.
 - **Formatos disponibles:**
   - **WAV:** Calidades PCM de 16 bits, 24 bits o 32 bits en coma flotante; frecuencia de muestreo de 44.1 kHz o 48 kHz.
   - **MP3:** Codificación local de alta velocidad con `@breezystack/lamejs` con tasas de bits seleccionables (128 kbps, 192 kbps, 256 kbps o 320 kbps).
-- Barra de progreso interactiva en tiempo real y descarga directa.
-
-### 🎨 10. Interfaz Adaptable y Estilizada
-- **3 Temas de color profesionales:**
-  - `Live Dark`: Fondo oscuro elegante inspirado en interfaces profesionales de estudio.
-  - `Live Light`: Modo de alta visibilidad para ambientes luminosos.
-  - `Live Neon`: Estética sintética de alto contraste con acentos cian y magenta.
-- **Disposiciones flexibles de faders:** Vista de sesión (faders abajo) o vista de arreglo (faders a la izquierda de cada pista).
-- **Tipografía local Figtree:** Tipografía moderna instalada en el paquete localmente, preservando números monoespaciados tabulares en relojes y medidores.
-- **Cero emojis:** Iconografía vectorial profesional con `lucide-react`.
-
-### 🎶 11. Gestor de Repertorio / Setlist por Pestañas (En Vivo)
-- **Múltiples canciones dentro del mismo proyecto:** Pestañas superiores para organizar tu repertorio en vivo (`Canción 1`, `Canción 2`, etc.).
-- **Gestión fluida del concierto:** Añade canciones, renómbralas con doble clic, duplícalas, reordénalas o bórralas en cualquier momento.
-- **Optimización extrema de memoria RAM y CPU:**
-  - Diseñado para que el navegador no se congele ni se sobrecargue con múltiples canciones cargadas.
-  - Al cambiar de pestaña, OpenMT desmonta y libera inmediatamente los grafos de nodos Web Audio y los procesos WASM de la canción inactiva, conservando sus buffers y configuración listos para un arranque instantáneo.
-- **Persistencia en el archivo de proyecto:** Al guardar el proyecto `.openmt`, todas las canciones del repertorio con sus pistas, letras y ajustes se exportan conjuntamente.
-
-### 🎤 12. Letras Sincronizadas (LRC), Código QR y Salida Limpia para OBS
-- **Soporte de formato estándar LRC (.lrc / .txt):** Carga archivos de letra sincronizados o pégalos directamente con marcas de tiempo `[mm:ss.xx]`.
-- **Enlace global único para todo el setlist:** Configuras OBS Studio o las pantallas una sola vez con tu sala persistente. Al cambiar de pestaña de canción en OpenMT, las letras en OBS y celulares se actualizan automáticamente sin necesidad de tocar nada.
-- **Protección de enlace (Candado Lock / Unlock):** Bloquea la sala de transmisión para prevenir cambios accidentales o regenera una nueva sala cuando lo decidas.
-- **Generador de Código QR en vivo:**
-  - Muestra un código QR instantáneo para que vocalistas y músicos en el escenario apunten con la cámara de sus teléfonos o tablets.
-  - Modos de enlace seleccionables: **Teleprompter Móvil (WiFi)**, **OBS / Pantalla limpia** o **Enlace Remoto WebRTC**.
-- **Ajuste fino de sincronización (Offset):** Adelanta o retrasa la letra (+/- 0.2s, +/- 1.0s) con presets de latencia vocal (+300ms a +500ms).
-- **Ventana emergente y enlace para OBS Studio:**
-  - **3 Modos de visualización:** `Tercio inferior (Lower Third)`, `Teleprompter` y `Pantalla completa`.
-  - **4 Fondos seleccionables:** `Transparente` (nativo para OBS), `Oscuro elegante`, `Croma verde (#00FF00)` y `Negro puro`.
-
-### 🖥️ 13. Aplicación de Escritorio Electron (.exe) y Servidor LAN Local (WiFi sin Internet)
-- **Versión nativa instalable y portable para Windows:** Empaquetado completo con Electron y electron-builder (`openmt-Setup-2.1.0.exe` y versión portable).
-- **Servidor LAN HTTP + SSE integrado:** En la aplicación de escritorio, OpenMT inicia un servidor local en el puerto `3000` y detecta tu IP de red local (ej. `http://192.168.1.X:3000`).
-- **Acceso en red local para todo el equipo:** Cualquier teléfono, tablet o computadora conectada a la misma red Wi-Fi puede escanear el QR y ver el teleprompter en tiempo real durante ensayos o conciertos sin depender de conexión a internet.
 
 ---
 
@@ -162,14 +197,12 @@
 | **Escritorio** | [Electron](https://www.electronjs.org/) | `^41.3.1` | Aplicación de escritorio multiplataforma con servidor LAN HTTP + SSE |
 | **Empaquetado .exe** | [electron-builder](https://www.electron.build/) | `^26.0.2` | Compilador de instaladores NSIS y portables para Windows x64 |
 | **Tipografía** | [@fontsource/figtree](https://fontsource.org/fonts/figtree) | `^5.3.0` | Fuente Figtree empaquetada localmente (100 % libre de CDN) |
-| **Testing** | [Vitest](https://vitest.dev/) | `^5.0.5` | Pruebas unitarias de matemáticas de dB, música y estado |
+| **Testing** | [Vitest](https://vitest.dev/) | `^5.0.5` | Pruebas unitarias de matemáticas de dB, música, estado y pads |
 | **Linter** | [Oxlint](https://oxc.rs/) | `^1.88.0` | Análisis estático de código ultra veloz en Rust |
 
 ---
 
 ## 🔊 Arquitectura del Motor de Audio
-
-El flujo de señal de OpenMT está diseñado para mantener latencia ultra-baja y una precisión perfecta en la sincronización de las pistas:
 
 ```mermaid
 flowchart TD
@@ -182,8 +215,15 @@ flowchart TD
         StereoPanner --> MeterTap["Channel Meter AnalyserNode (Peak L/R)"]
     end
 
+    subgraph ModulosIndependientes ["Módulos de Sonido Autónomos"]
+        PadEngine["PadPlayer (Crossfade 1.8s + Loop)"] --> PadGain["Pad Volume"]
+        MetronomeEngine["Metronome WebAudio Engine"] --> MetronomeGain["Metronome Volume"]
+    end
+
     subgraph BusMaster ["Canal Master"]
         MeterTap --> MasterBus["Summing Master Bus"]
+        PadGain --> MasterBus
+        MetronomeGain --> MasterBus
         MasterBus --> MasterGain["Master Volume GainNode"]
         MasterGain --> MasterLimiter["DynamicsCompressorNode (Limitador de seguridad)"]
         MasterLimiter --> MasterMeter["Master AnalyserNode"]
@@ -203,16 +243,13 @@ flowchart TD
 
 ## 🌐 Compatibilidad de Navegadores y Sistemas
 
-OpenMT funciona en cualquier sistema operativo moderno con un navegador compatible con **Web Audio API**, **WebAssembly** y **AudioWorklet**:
-
-| Navegador | Versión Mínima | Soporte | Notas |
-| :--- | :---: | :---: | :--- |
-| **Google Chrome** | 90+ |  Total | Máximo rendimiento y soporte de WASM SIMD |
-| **Microsoft Edge** | 90+ |  Total | Basado en Chromium, rendimiento idéntico a Chrome |
-| **Mozilla Firefox** | 90+ |  Total | Soporte nativo completo para AudioWorklet |
-| **Apple Safari** | 15.4+ |  Total | Compatible en macOS, iPadOS e iOS |
-| **Brave / Opera / Vivaldi** | Recientes |  Total | Rendimiento óptimo en motores Chromium |
-| **Navegadores Móviles** | Android / iOS |  Compatible | Requiere toque inicial para desbloquear el contexto de audio |
+| Plataforma | Soporte | Notas |
+| :--- | :---: | :--- |
+| **Windows 10 / 11 (.exe)** |  Nativo | Instalador y versión portable disponibles con servidor LAN Wi-Fi integrado |
+| **Google Chrome / Microsoft Edge** |  Total | Máximo rendimiento con soporte nativo de WASM SIMD y AudioWorklet |
+| **Mozilla Firefox** |  Total | Soporte nativo completo para AudioWorklet |
+| **Apple Safari (macOS / iPadOS / iOS)** |  Total | Compatible a partir de Safari 15.4+ |
+| **Navegadores Móviles (Android / iOS)** |  Compatible | Requiere un toque inicial del usuario para reanudar el contexto de audio |
 
 ---
 
@@ -224,8 +261,8 @@ OpenMT funciona en cualquier sistema operativo moderno con un navegador compatib
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/tu-usuario/daw-mt.git
-cd daw-mt
+git clone https://github.com/edgardovalladares/OpenMT.git
+cd OpenMT
 ```
 
 ### 2. Instalar dependencias
@@ -233,76 +270,34 @@ cd daw-mt
 npm install
 ```
 
-### 3. Iniciar el servidor de desarrollo
+### 3. Iniciar el servidor de desarrollo web
 ```bash
 npm run dev
 ```
-Abre tu navegador en [http://localhost:5173/](http://localhost:5173/). El entorno cuenta con Hot Module Replacement (HMR) instantáneo.
+Abre tu navegador en [http://localhost:5173/](http://localhost:5173/).
 
 ### 4. Ejecutar pruebas unitarias
 ```bash
 npm test
 ```
 
-### 5. Verificar calidad de código (Linter)
+### 5. Compilar para escritorio Windows (.exe)
 ```bash
-npm run lint
-```
-
-### 6. Compilar para producción
-```bash
-npm run build
-```
-Generará la carpeta optimizada y minificada `dist/` lista para ser servida en cualquier servidor web estático o CDN.
-
-### 7. Previsualizar la compilación de producción
-```bash
-npm run preview
-```
-
-### 8. Ejecutar como Aplicación de Escritorio (Electron)
-```bash
-# Iniciar Electron en modo desarrollo
-npm run electron:dev
-
-# Generar instalador de Windows (.exe) y versión Portable
 npm run dist:exe
 ```
-Los archivos ejecutables `.exe` (instalador NSIS y versión portable independiente) se generarán automáticamente en la carpeta `release/`.
+Los archivos `.exe` (instalador NSIS y versión portable) se generarán en la carpeta `release/`.
 
 ---
 
 ## 🧭 Guía de Uso Paso a Paso
 
-### 1. Importar Pistas
-- Puedes arrastrar múltiples archivos de audio directamente al área central de la aplicación o hacer clic en el botón con el ícono **`+`** (**Abrir audio**).
-- La aplicación cargará hasta 20 pistas simultáneamente y asignará nombres y colores automáticamente.
-- En segundo plano, el Web Worker calculará el tempo (BPM) y la tonalidad sugerida.
-
-### 2. Control del Transporte
-- Presiona **Espacio** o el botón circular de reproducción para iniciar o pausar.
-- Haz clic sobre cualquier punto de la regla de tiempo (*Ruler*) o sobre las formas de onda para posicionar el cabezal de reproducción.
-- Presiona **Inicio (Home)** para regresar al segundo 0.
-
-### 3. Ajuste de Tono y Tempo
-- **Cambiar Tempo:** Usa el campo numérico de BPM o el deslizador de porcentaje. Haz doble clic en el deslizador para regresar al 100 %.
-- **Transponer Tonalidad:** En el panel **TONALIDAD**, usa el control escalonado (`+` / `-`) para subir o bajar semitonos completos. Ajusta los centésimas en el deslizador fino si el audio original está desafinado unos cuantos cents.
-- **Bloqueo de Pista:** Si no deseas que la batería o los clicks se transpongan, abre el modal de **Bloqueo** o presiona el ícono de candado en la pista correspondiente.
-
-### 4. Creación y Reproducción de Secciones
-- En la barra superior del timeline verás las secciones creadas (`Intro`, `Coro`, etc.).
-- Si haces clic sobre una sección activa, activará el modo bucle para esa sección.
-- Si haces clic sobre otra sección mientras reproduces, la sección se pondrá en estado **"EN COLA"** con un aviso flotante y saltará suavemente justo al completar la sección en curso.
-
-### 5. Guardado y Carga de Proyectos
-- Ve al menú superior **Archivo > Guardar proyecto (.json)** para descargar un archivo JSON con toda tu configuración.
-- Para reabrirlo, ve a **Archivo > Cargar proyecto (.json)**. Si los archivos de audio se encuentran en la misma ubicación o carpeta, se cargarán de inmediato; en caso contrario, el modal de reconexión te permitirá seleccionarlos.
-- También puedes gestionar tus proyectos directamente en la memoria local desde **Archivo > Administrar proyectos guardados**.
-
-### 6. Exportación de la Mezcla
-- Ve a **Archivo > Exportar mezcla (WAV / MP3)**.
-- Selecciona el formato deseado, resolución y tasa de bits.
-- Haz clic en **Iniciar exportación** y descarga el archivo procesado.
+1. **Importar Pistas:** Arrastra archivos de audio directamente al centro de la aplicación o haz clic en el botón **`+`** de transporte.
+2. **Control del Transporte:** Presiona **Espacio** para reproducir/pausar. Haz clic en la regla de tiempo para mover el cabezal.
+3. **Pads Continuos:** Pulsa el botón de reproducción en el panel **PADS WORSHIP** de la barra superior. Si la casilla de Auto-Tonalidad está activa, el pad cambiará de nota automáticamente cuando cambies de canción o tono.
+4. **Metrónomo:** Activa el metrónomo desde la barra superior. Ajusta el tempo con los botones `+`/`-`, usa **TAP TEMPO** o selecciona la métrica rítmica (`4/4`, `3/4`, `6/8`, etc.).
+5. **Transposición y Tempo:** Cambia la velocidad del 50 % al 200 % o transpón en semitonos. Bloquea pistas rítmicas con el candado.
+6. **Setlist de Canciones:** Añade nuevas canciones en las pestañas superiores para tener todo tu repertorio listo para el concierto.
+7. **Proyección de Letras:** Abre el panel **LETRAS** para cargar archivos `.lrc`, copiar el enlace limpio para OBS Studio o escanear el código QR con teléfonos o tablets.
 
 ---
 
@@ -316,7 +311,7 @@ Los archivos ejecutables `.exe` (instalador NSIS y versión portable independien
 | <kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> | Rehacer la acción |
 | <kbd>Ctrl</kbd> + <kbd>Rueda del ratón</kbd> | Acercar o alejar el zoom horizontal del timeline |
 | <kbd>Alt</kbd> + <kbd>Rueda del ratón</kbd> | Acercar o alejar el zoom horizontal del timeline |
-| <kbd>Doble Clic</kbd> en Faders / Sliders | Restablecer valor a su posición por defecto (`0 dB`, `0 cents`, `100 %`) |
+| <kbd>Doble Clic</kbd> en Faders / Pan | Restablecer valor a su posición por defecto (`0 dB`, `Centro (C)`) |
 | <kbd>Escape</kbd> | Cerrar cualquier modal o menú desplegable abierto |
 
 ---
@@ -325,68 +320,47 @@ Los archivos ejecutables `.exe` (instalador NSIS y versión portable independien
 
 ```plaintext
 daw-mt/
+├── electron/
+│   ├── main.cjs               # Proceso principal de Electron y Servidor LAN (HTTP + SSE)
+│   └── preload.cjs            # Canal IPC bidireccional seguro (contextBridge)
 ├── public/
 │   ├── images/
-│   │   ├── favicon.png          # Favicon oficial
-│   │   ├── logo-dark.png        # Logo para tema oscuro y neon
-│   │   └── logo-light.png       # Logo para tema claro
-│   └── favicon.ico
+│   │   ├── favicon.png        # Favicon oficial
+│   │   ├── logo-dark.png      # Logo oficial para modo oscuro
+│   │   └── logo-light.png     # Logo oficial para modo claro
+│   └── pads/                  # Librerías de pads continuos worship
+│       ├── ESSENTIALS/        # 12 tonalidades acústicas y cálidas
+│       └── OMNISPHERE/        # 12 tonalidades etéreas y atmosféricas
+├── release/                   # Ejecutables compilados de Windows (.exe)
 ├── src/
-│   ├── assets/                  # Gráficos auxiliares
 │   ├── audio/
-│   │   ├── analysis/
-│   │   │   ├── analyzer.worker.ts # Web Worker para detección de BPM y Tono
-│   │   │   ├── analyzerClient.ts  # Cliente de comunicación con el Worker
-│   │   │   ├── dsp.ts             # Funciones de procesamiento de señales
-│   │   │   └── fft.ts             # Algoritmo de transformada rápida de Fourier
-│   │   ├── export/
-│   │   │   └── exportMix.ts       # Render offline en WAV y MP3 con LameJS
-│   │   ├── dbMath.ts              # Curvas logarítmicas de faders analógicos
-│   │   ├── engine.ts              # Motor maestro de audio (Web Audio API)
-│   │   ├── frameLoop.ts           # Bucle RAF unificado a 60 fps
-│   │   ├── levels.ts              # Medición de picos estéreo y clipping
-│   │   ├── music.ts               # Rueda de Camelot, escalas y transposición
-│   │   ├── peaks.ts               # Extracción de picos para ondas visuales
-│   │   ├── sync.ts                # Algoritmos de sincronización de transporte
-│   │   └── track.ts               # Lógica individual de nodo por pista
+│   │   ├── analysis/          # Web Worker para detección de BPM y Tono
+│   │   ├── export/            # Render offline en WAV y MP3 con LameJS
+│   │   ├── dbMath.ts          # Faders analógicos y curvas logarítmicas
+│   │   ├── engine.ts          # Motor maestro de audio (Web Audio API)
+│   │   ├── lyricsSync.ts      # Sincronización WebRTC, IPC y LAN de letras
+│   │   ├── metronome.ts       # Motor del metrónomo con Web Audio nativo
+│   │   ├── padPlayer.ts       # Motor de pads continuos y crossfade
+│   │   └── track.ts           # Nodo individual de procesamiento por pista
 │   ├── components/
-│   │   ├── ClipEditorModal.tsx    # Modal de recorte y fades
-│   │   ├── EmptyState.tsx         # Pantalla inicial de bienvenida y carga
-│   │   ├── ExportModal.tsx        # Modal de exportación WAV / MP3
-│   │   ├── Fader.tsx              # Componente de fader analógico interactivo
-│   │   ├── KeyPanel.tsx           # Panel de tonalidad y bloqueo
-│   │   ├── Lane.tsx               # Pista visual individual en el timeline
-│   │   ├── MasterStrip.tsx        # Fader del canal Master
-│   │   ├── MenuBar.tsx            # Barra superior de menús (Archivo, Edición, etc.)
-│   │   ├── Meter.tsx              # Medidor estéreo en canvas
-│   │   ├── MixerBottom.tsx        # Mezclador en vista inferior (Session)
-│   │   ├── MixerStrip.tsx         # Tira de canal de pista individual
-│   │   ├── PitchLockModal.tsx     # Modal de gestión de pistas bloqueadas
-│   │   ├── RelinkModal.tsx        # Modal de búsqueda y reconexión de audios
-│   │   ├── Ruler.tsx              # Regla de tiempo con marcas de compás y segundos
-│   │   ├── SavedProjectsModal.tsx # Administrador de biblioteca de proyectos
-│   │   ├── SectionsBar.tsx        # Barra de secciones de canción y bucles
-│   │   ├── Stage.tsx              # Contenedor principal de pistas
-│   │   ├── TempoPanel.tsx         # Panel de control de tempo y BPM
-│   │   └── TopBar.tsx             # Barra de controles, transporte e historial
-│   ├── hooks/
-│   │   ├── useHotkeys.ts          # Manejador central de atajos de teclado
-│   │   └── useMediaQuery.ts       # Detección de pantallas y responsividad
+│   │   ├── KeyPanel.tsx       # Tonalidad y Pitch Lock
+│   │   ├── Lane.tsx           # Pistas visuales en el timeline
+│   │   ├── LyricsModal.tsx    # Modal de configuración de letras, QR y OBS
+│   │   ├── LyricsView.tsx     # Visor de teleprompter y salida limpia para OBS
+│   │   ├── MetronomePanel.tsx # Panel de control del metrónomo
+│   │   ├── PadPanel.tsx       # Panel de control de pads worship
+│   │   ├── Ruler.tsx          # Regla de tiempo continua
+│   │   ├── SongCards.tsx      # Pestañas de canciones del repertorio
+│   │   ├── Stage.tsx          # Contenedor principal del timeline y zoom
+│   │   └── TopBar.tsx         # Barra superior de transporte e instrumentos
 │   ├── store/
-│   │   ├── derived.ts             # Selectores derivados optimizados
-│   │   └── useDaw.ts              # Store global Zustand con pila de historial
+│   │   └── useDaw.ts          # Estado global Zustand con optimización de memoria
 │   ├── styles/
-│   │   ├── app.css                # Estilos globales y componentes
-│   │   └── tokens.css             # Variables CSS y paletas para los 3 temas
-│   ├── types/
-│   │   └── project.ts             # Definiciones TypeScript de proyectos y pistas
-│   ├── utils/
-│   │   └── projectManager.ts      # Serialización JSON y almacenamiento local
-│   ├── App.tsx                    # Componente raíz
-│   └── main.tsx                   # Punto de entrada de la aplicación
+│   │   ├── app.css            # Estilos globales y diseño responsivo
+│   │   └── tokens.css         # Variables y paletas de temas (Live Dark, Light, Neon)
+│   ├── App.tsx                # Enrutador principal (DAW / Visor de letras)
+│   └── main.tsx               # Montaje React 19
 ├── package.json
-├── tsconfig.json
-├── vercel.json                    # Cabeceras de seguridad CSP para producción
 └── vite.config.ts
 ```
 
@@ -401,13 +375,12 @@ OpenMT está diseñado bajo la filosofía **Zero-Knowledge / Privacy-First**:
   ```http
   Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; media-src 'self' blob: data:;
   ```
-  Esto autoriza el uso de WebAssembly y Web Workers locales bloqueando cualquier inyección o conexión externa maliciosa.
 
 ---
 
 ## 📄 Licencia y Créditos
 
-Este proyecto es de código abierto.
+Este proyecto es de código abierto bajo la licencia MIT.
 
 ### Reconocimientos especiales:
 - **[Signalsmith Audio](https://signalsmith-audio.co.uk/):** Por el excepcional algoritmo de estiramiento de audio y cambio de tono [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch).
@@ -418,5 +391,5 @@ Este proyecto es de código abierto.
 ---
 
 <p align="center">
-  Desarrollado con dedicación para músicos y creadores de audio. Si encuentras útil este proyecto, ¡no dudes en darle una ⭐ en GitHub!
+  Desarrollado con dedicación para músicos, iglesias y productores. Si encuentras útil este proyecto, ¡no olvides dejar una ⭐ en <a href="https://github.com/edgardovalladares/OpenMT">GitHub</a>!
 </p>
