@@ -4,6 +4,9 @@ const http = require('http');
 const os = require('os');
 const fs = require('fs');
 
+// Optimización: Aumentar el límite de memoria RAM para V8 en Electron a 8 GB
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=8192');
+
 let mainWindow = null;
 let lanServer = null;
 let lanPort = 3000;

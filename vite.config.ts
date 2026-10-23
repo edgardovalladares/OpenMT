@@ -95,6 +95,7 @@ function lyricsSyncPlugin(): Plugin {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [react(), lyricsSyncPlugin()],
   resolve: {
     dedupe: ['react', 'react-dom'],

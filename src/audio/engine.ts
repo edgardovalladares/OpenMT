@@ -2,6 +2,20 @@ import { Track } from './track';
 import { computePeaks, resampleForAnalysis } from './peaks';
 import { dbToGain, posToDb } from './dbMath';
 import type { MeterSource } from './levels';
+import {
+  isTauri,
+  tauriLoadFile,
+  tauriRemoveTrack,
+  tauriUpdateTrackMix,
+  tauriPlay,
+  tauriPause,
+  tauriStop,
+  tauriSeek,
+  tauriSetMasterVolume,
+  tauriSetTempoRatio,
+  tauriSwitchSong,
+  tauriGetState,
+} from './tauriBridge';
 
 export type TransportState = 'stopped' | 'playing' | 'paused';
 const LEAD = 0.08; // segundos de margen para arrancar todas las pistas en el mismo instante
@@ -21,6 +35,38 @@ class Engine {
   private anchorPos = 0;
   private pausedPos = 0;
   private watch: number | undefined;
+
+  // Estado y sincronización con Tauri 2 (Rust CPAL + Symphonia)
+  private activeSongId = 'default';
+  private tauriPosition = 0;
+  private tauriDuration = 0;
+  private tauriDurations = new Map<string, number>();
+
+  constructor() {
+    if (typeof window !== 'undefined' && isTauri()) {
+      setInterval(async () => {
+        if (this.state === 'playing') {
+          try {
+            const st = await tauriGetState(this.activeSongId);
+            this.tauriPosition = st.position;
+            if (st.duration > 0) this.tauriDuration = st.duration;
+            if (st.duration > 0 && st.position >= st.duration - 0.05) {
+              this.stop();
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }, 30);
+    }
+  }
+
+  setActiveSongId(id: string) {
+    this.activeSongId = id;
+    if (isTauri()) {
+      void tauriSwitchSong(id);
+    }
+  }
 
   /** Crea el AudioContext (queda "suspended" hasta el primer gesto del usuario). */
   init(): AudioContext {
@@ -65,9 +111,30 @@ class Engine {
     file: File,
     activate: boolean | (() => boolean) = true,
   ) {
+    // Si corre en Tauri 2 y tenemos ruta nativa de archivo: decodificación en Rust (Symphonia)
+    const filePath = (file as unknown as { path?: string }).path;
+    if (isTauri() && filePath) {
+      try {
+        const meta = await tauriLoadFile(this.activeSongId, id, filePath, file.name);
+        this.fileInfo.set(id, {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified,
+        });
+        this.tauriDurations.set(id, meta.duration);
+        this.tauriDuration = Math.max(this.tauriDuration, meta.duration);
+        const peaks = new Float32Array(meta.peaks);
+        return { duration: meta.duration, peaks, analysisInput: new Float32Array(0) };
+      } catch (err) {
+        console.warn('Tauri decode fallback to WebAudio:', err);
+      }
+    }
+
+    // Fallback estándar en Web Audio
     const ctx = this.init();
     const arrayBuf = await file.arrayBuffer();
-    const buf = await ctx.decodeAudioData(arrayBuf); // remuestrea al sampleRate del contexto
+    const buf = await ctx.decodeAudioData(arrayBuf);
     this.audioBuffers.set(id, buf);
     this.fileInfo.set(id, {
       name: file.name,
@@ -129,6 +196,10 @@ class Engine {
   }
 
   removeTrack(id: string) {
+    if (isTauri()) {
+      void tauriRemoveTrack(this.activeSongId, id);
+      this.tauriDurations.delete(id);
+    }
     this.tracks.get(id)?.dispose();
     this.tracks.delete(id);
     this.audioBuffers.delete(id);
@@ -149,10 +220,6 @@ class Engine {
     this.pausedPos = 0;
   }
 
-  /**
-   * Limpia solo los nodos de audio de las pistas activas,
-   * conservando los buffers cargados de otras canciones del setlist.
-   */
   clearActiveTracks() {
     this.stop();
     this.tracks.forEach((t) => t.dispose());
@@ -160,13 +227,16 @@ class Engine {
     this.pausedPos = 0;
   }
 
-  /**
-   * Cambia de canción activa desmontando los grafos de audio de canciones inactivas
-   * para optimizar el rendimiento y evitar consumo excesivo de memoria/CPU.
-   */
   async switchSongTracks(
     newTrackIds: { id: string; semitones: number; trimStart?: number; trimEnd?: number; fadeIn?: number; fadeOut?: number }[],
   ) {
+    if (isTauri()) {
+      this.stop();
+      this.seek(0);
+      await tauriSwitchSong(this.activeSongId);
+      return;
+    }
+
     this.stop();
     this.seek(0);
     const activeIds = new Set(newTrackIds.map((t) => t.id));
@@ -197,6 +267,23 @@ class Engine {
     tracks: { id: string; volPos: number; pan: number; mute: boolean; solo: boolean }[],
     masterVolPos: number,
   ) {
+    if (isTauri()) {
+      const masterGain = dbToGain(posToDb(masterVolPos));
+      void tauriSetMasterVolume(masterGain);
+      const anySolo = tracks.some((x) => x.solo);
+      for (const t of tracks) {
+        const audible = !t.mute && (!anySolo || t.solo);
+        const gain = audible ? dbToGain(posToDb(t.volPos)) : 0;
+        void tauriUpdateTrackMix(this.activeSongId, t.id, {
+          volume: gain,
+          pan: t.pan,
+          mute: t.mute,
+          solo: t.solo,
+        });
+      }
+      return;
+    }
+
     if (!this.ctx) return;
     const anySolo = tracks.some((t) => t.solo);
     for (const t of tracks) {
@@ -211,6 +298,18 @@ class Engine {
 
   // ---------- recortes y desvanecimientos ----------
   applyTrims(tracks: { id: string; trimStart: number; trimEnd: number; fadeIn: number; fadeOut: number }[]) {
+    if (isTauri()) {
+      for (const t of tracks) {
+        void tauriUpdateTrackMix(this.activeSongId, t.id, {
+          trimStart: t.trimStart,
+          trimEnd: t.trimEnd,
+          fadeIn: t.fadeIn,
+          fadeOut: t.fadeOut,
+        });
+      }
+      return;
+    }
+
     for (const t of tracks) {
       this.trims.set(t.id, {
         trimStart: t.trimStart,
@@ -230,8 +329,16 @@ class Engine {
   // ---------- tono / tempo ----------
   applyPitchTempo(rate: number, list: { id: string; semitones: number }[]) {
     const r = Math.min(2, Math.max(0.5, rate));
+
+    if (isTauri()) {
+      void tauriSetTempoRatio(r);
+      for (const { id, semitones } of list) {
+        void tauriUpdateTrackMix(this.activeSongId, id, { semitones });
+      }
+      return;
+    }
+
     if (this.ctx && this.state === 'playing' && Math.abs(r - this.rate) > 1e-6) {
-      // re-anclar el reloj para que la posición no salte al cambiar la velocidad
       this.anchorPos = this.position;
       this.anchorCtx = this.ctx.currentTime;
     }
@@ -244,12 +351,18 @@ class Engine {
 
   // ---------- transporte ----------
   get duration() {
+    if (isTauri()) {
+      let maxD = 0;
+      this.tauriDurations.forEach((d) => { if (d > maxD) maxD = d; });
+      return maxD > 0 ? maxD : this.tauriDuration;
+    }
     let d = 0;
     this.tracks.forEach((t) => { if (t.duration > d) d = t.duration; });
     return d;
   }
 
   get position(): number {
+    if (isTauri()) return this.tauriPosition;
     if (!this.ctx || this.state !== 'playing') return this.pausedPos;
     const p = this.anchorPos + Math.max(0, this.ctx.currentTime - this.anchorCtx) * this.rate;
     return Math.min(p, this.duration);
@@ -288,6 +401,13 @@ class Engine {
   }
 
   async play() {
+    if (isTauri()) {
+      if (this.state === 'playing') return;
+      await tauriPlay();
+      this.setState('playing');
+      return;
+    }
+
     if (this.tracks.size === 0) return;
     const ctx = this.init();
     if (ctx.state !== 'running') await ctx.resume();
@@ -296,6 +416,13 @@ class Engine {
   }
 
   pause() {
+    if (isTauri()) {
+      if (this.state !== 'playing') return;
+      void tauriPause();
+      this.setState('paused');
+      return;
+    }
+
     if (this.state !== 'playing') return;
     this.pausedPos = this.position;
     this.halt();
@@ -303,6 +430,13 @@ class Engine {
   }
 
   stop() {
+    if (isTauri()) {
+      void tauriStop();
+      this.tauriPosition = 0;
+      this.setState('stopped');
+      return;
+    }
+
     this.halt();
     this.pausedPos = 0;
     this.setState('stopped');
@@ -311,6 +445,12 @@ class Engine {
   toggle() { return this.state === 'playing' ? this.pause() : this.play(); }
 
   seek(sec: number) {
+    if (isTauri()) {
+      this.tauriPosition = Math.max(0, sec);
+      void tauriSeek(this.tauriPosition);
+      return;
+    }
+
     const p = Math.min(Math.max(0, sec), this.duration);
     if (this.state === 'playing') { this.halt(); this.startAt(p); }
     else this.pausedPos = p;

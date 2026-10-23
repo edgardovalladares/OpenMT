@@ -374,6 +374,7 @@ export const useDaw = create<DawState>()((set, get) => {
       });
 
       // 2. Desmontar nodos de audio inactivos y activar los de la nueva canción
+      engine.setActiveSongId(targetId);
       await engine.switchSongTracks(
         targetSong.tracks.map((t) => ({
           id: t.id,
@@ -718,6 +719,7 @@ export const useDaw = create<DawState>()((set, get) => {
     async addFiles(files) {
       pushUndo();
       const targetSongId = get().activeSongId;
+      engine.setActiveSongId(targetSongId);
       for (const file of files) {
         // Verificar que la canción a la que se agregaron las pistas aún exista
         const currentSongs = get().songs;

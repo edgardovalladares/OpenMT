@@ -13,7 +13,10 @@
     "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
     "electron:start": "electron .",
     "electron:build": "npm run build && electron-builder --win",
-    "dist:exe": "npm run build && electron-builder --win nsis portable"
+    "dist:exe": "npm run build && electron-builder --win nsis portable",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "npm run build && tauri build"
   },
   "build": {
     "appId": "com.openmt.daw",
@@ -63,6 +66,8 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^24.19.2",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",

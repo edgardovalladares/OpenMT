@@ -13,6 +13,9 @@ dist-ssr
 release
 *.exe
 *.local
+native/build/
+src-tauri/target/
+
 
 # Editor directories and files
 .vscode/*
