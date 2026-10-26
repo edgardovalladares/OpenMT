@@ -35,6 +35,7 @@ import {
   setRoomLocked,
   regeneratePersistentRoom,
 } from '../audio/lyricsSync';
+import { isTauri, tauriGetLanInfo } from '../audio/tauriBridge';
 import type { ElectronLanInfo } from '../types/electron';
 
 interface Props {
@@ -70,9 +71,11 @@ export function LyricsModal({ isOpen, onClose }: Props) {
   const [roomCode, setRoomCode] = useState<string>(() => getPersistentRoom());
   const [isLocked, setIsLockedState] = useState<boolean>(() => isRoomLocked());
 
-  // Red local desde Electron (si está corriendo como app de escritorio)
+  // Red local desde Tauri o Electron (si está corriendo como app de escritorio en PC)
+  const isDesktop = typeof window !== 'undefined' && (Boolean(window.electronAPI?.isElectron) || isTauri());
   const [lanInfo, setLanInfo] = useState<ElectronLanInfo | null>(null);
-  const isDesktop = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
+  const [selectedIp, setSelectedIp] = useState<string>('');
+  const [customIp, setCustomIp] = useState<string>('');
 
   // Destino del Código QR
   const [qrTarget, setQrTarget] = useState<'mobile-prompter' | 'obs' | 'remote'>('mobile-prompter');
@@ -82,19 +85,33 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   const parsedLines = useMemo(() => parseLrc(text), [text]);
 
-  // Obtener información LAN de Electron si está disponible
+  // Obtener información LAN de Tauri o Electron
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.electronAPI?.getLanInfo) {
+    if (isTauri()) {
+      tauriGetLanInfo()
+        .then((info) => {
+          if (info && (info.localUrl || info.ips?.length)) {
+            setLanInfo(info);
+            if (info.ips?.length && !selectedIp) {
+              setSelectedIp(info.ips[0]);
+            }
+          }
+        })
+        .catch((err) => console.warn('Error obteniendo info LAN de Tauri:', err));
+    } else if (typeof window !== 'undefined' && window.electronAPI?.getLanInfo) {
       window.electronAPI
         .getLanInfo()
         .then((info) => {
-          if (info && info.localUrl) {
+          if (info && (info.localUrl || info.ips?.length)) {
             setLanInfo(info);
+            if (info.ips?.length && !selectedIp) {
+              setSelectedIp(info.ips[0]);
+            }
           }
         })
         .catch(() => {});
     }
-  }, []);
+  }, [selectedIp]);
 
   // Asegurar sala activa
   useEffect(() => {
@@ -153,9 +170,17 @@ export function LyricsModal({ isOpen, onClose }: Props) {
     setLyricsOffset(newOffset);
   };
 
+  // Host activo para conexiones LAN (WiFi y Cable)
+  const currentHost = useMemo(() => {
+    const ip = customIp.trim() || selectedIp || lanInfo?.ips?.[0] || '127.0.0.1';
+    const port = lanInfo?.port || 3000;
+    return `http://${ip}:${port}`;
+  }, [customIp, selectedIp, lanInfo]);
+
   // Generador centralizado de URLs adaptado a Desktop vs Web
   const generateLocalObsUrl = () => {
-    const origin = isDesktop && lanInfo?.port ? `http://localhost:${lanInfo.port}` : window.location.origin;
+    const port = lanInfo?.port || 3000;
+    const origin = isDesktop ? `http://localhost:${port}` : window.location.origin;
     const pathname = window.location.pathname;
     const searchParams = new URLSearchParams({
       view: 'lyrics',
@@ -170,7 +195,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
   };
 
   const generateLanPrompterUrl = () => {
-    const origin = isDesktop && lanInfo?.localUrl ? lanInfo.localUrl : window.location.origin;
+    const origin = isDesktop ? currentHost : window.location.origin;
     const pathname = window.location.pathname;
     const searchParams = new URLSearchParams({
       view: 'lyrics',
@@ -209,7 +234,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
   const currentQrUrl = useMemo(() => {
     return buildLyricsUrl(qrTarget);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrTarget, roomCode, lanInfo?.localUrl, lanInfo?.port, options.theme, options.mode, options.fontSize, options.uppercase, options.showNext]);
+  }, [qrTarget, roomCode, currentHost, lanInfo?.port, options.theme, options.mode, options.fontSize, options.uppercase, options.showNext]);
 
   // Generar Código QR automáticamente
   useEffect(() => {
@@ -757,12 +782,12 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
               {/* Tarjeta Principal Adaptada (Desktop LAN vs Web WebRTC) */}
               {isDesktop ? (
-                /* MODO ESCRITORIO (.EXE): Red Local WiFi como Protagonista */
+                /* MODO ESCRITORIO (.EXE): Red Local WiFi y Cable como Protagonista */
                 <div className="lyrics-hero-card lyrics-hero-card--desktop">
                   <div className="lyrics-hero-card__header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Wifi size={17} style={{ color: 'var(--meter-ok)' }} />
-                      <strong style={{ fontSize: 13 }}>Red Local WiFi (Servidor LAN Autónomo)</strong>
+                      <strong style={{ fontSize: 13 }}>Red Local Wi-Fi y Cable (Servidor LAN Autónomo)</strong>
                     </div>
                     <span className="lyrics-badge lyrics-badge--ok">
                       En línea en puerto {lanInfo?.port || 3000} (Sin requerir Internet)
@@ -787,8 +812,65 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                     {/* Detalles de Conexión WiFi */}
                     <div className="lyrics-hero-details">
                       <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text)', lineHeight: 1.45 }}>
-                        Cualquier teléfono, tablet o computadora conectada al <strong>mismo Wi-Fi</strong> puede abrir el teleprompter en tiempo real durante ensayos o conciertos <strong>sin conexión a internet</strong>.
+                        Cualquier teléfono, tablet o computadora conectada a la <strong>misma red Wi-Fi o por cable Ethernet</strong> puede abrir el teleprompter en tiempo real durante ensayos o conciertos <strong>sin conexión a internet</strong>.
                       </p>
+
+                      {/* Selector de Dirección IP de Red (Wi-Fi o Cable Ethernet) */}
+                      <div className="lyrics-network-ip-section" style={{ margin: '8px 0', padding: '8px 10px', background: 'var(--bg-inset)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <Wifi size={13} style={{ color: 'var(--meter-ok)' }} />
+                            IP de Red Local (Wi-Fi o Cable Ethernet):
+                          </span>
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'monospace' }}>
+                            Puerto: <strong>{lanInfo?.port || 3000}</strong>
+                          </span>
+                        </div>
+
+                        {lanInfo?.ips && lanInfo.ips.length > 0 && (
+                          <div className="row" style={{ gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
+                            {lanInfo.ips.map((ip) => {
+                              const isSelected = (selectedIp === ip || (!selectedIp && ip === lanInfo.ips[0])) && !customIp;
+                              return (
+                                <button
+                                  key={ip}
+                                  type="button"
+                                  className={`btn btn--tiny ${isSelected ? 'btn--accent' : ''}`}
+                                  onClick={() => {
+                                    setSelectedIp(ip);
+                                    setCustomIp('');
+                                  }}
+                                  title={`Usar IP ${ip} para el QR y el enlace`}
+                                >
+                                  {ip}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            className="text-input"
+                            style={{ height: 24, fontSize: 11, padding: '2px 8px', flex: 1, fontFamily: 'monospace' }}
+                            placeholder={`IP manual (ej: ${selectedIp || lanInfo?.ips?.[0] || '192.168.1.50'})`}
+                            value={customIp}
+                            onChange={(e) => setCustomIp(e.target.value)}
+                            title="Ingresa una IP estática o personalizada si usas cable directo sin DHCP"
+                          />
+                          {customIp && (
+                            <button
+                              type="button"
+                              className="btn btn--tiny"
+                              onClick={() => setCustomIp('')}
+                              title="Restablecer a IP detectada automáticamente"
+                            >
+                              Auto
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
                       <div className="lyrics-target-selector">
                         <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 600 }}>Destino del enlace:</span>

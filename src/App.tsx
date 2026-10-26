@@ -1,6 +1,9 @@
 import { useEffect, useState, type DragEvent } from 'react';
 import { useDaw } from './store/useDaw';
 import { engine } from './audio/engine';
+import { isTauri, tauriReadFileBytes } from './audio/tauriBridge';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { readProjectFromJsonFile } from './utils/projectManager';
 import { useHotkeys } from './hooks/useHotkeys';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { MenuBar } from './components/MenuBar';
@@ -44,10 +47,86 @@ function DawApp() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
   }, [theme]);
 
+  // Soporte de Arrastrar y Soltar Nativo en Tauri 2 para Windows (Archivos y Proyectos)
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+
+    getCurrentWebview()
+      .onDragDropEvent(async (event) => {
+        if (event.payload.type === 'enter' || event.payload.type === 'over') {
+          setDragging(true);
+        } else if (event.payload.type === 'leave') {
+          setDragging(false);
+        } else if (event.payload.type === 'drop') {
+          setDragging(false);
+          const paths = event.payload.paths;
+          if (!paths || paths.length === 0) return;
+
+          // 1. Si se soltó un archivo de proyecto (.openmt o .json)
+          const projectPath = paths.find((p) => p.endsWith('.openmt') || p.endsWith('.json'));
+          if (projectPath && paths.length === 1) {
+            try {
+              const bytes = await tauriReadFileBytes(projectPath);
+              const text = new TextDecoder().decode(bytes);
+              const proj = JSON.parse(text);
+              if (proj && (Array.isArray(proj.tracks) || Array.isArray(proj.songs))) {
+                useDaw.getState().loadProject(proj);
+                return;
+              }
+            } catch (err) {
+              console.warn('Error abriendo proyecto soltado en Tauri:', err);
+            }
+          }
+
+          // 2. Archivos de audio
+          const audioPaths = paths.filter((p) => AUDIO_EXT.test(p));
+          if (audioPaths.length === 0) return;
+
+          const loadedFiles: File[] = [];
+          for (const filePath of audioPaths) {
+            try {
+              const fileName = filePath.split(/[\\/]/).pop() || 'audio.wav';
+              const bytes = await tauriReadFileBytes(filePath);
+              const file = new File([bytes as unknown as BlobPart], fileName, { type: 'audio/wav' });
+              (file as unknown as { path: string }).path = filePath;
+              loadedFiles.push(file);
+            } catch (err) {
+              console.error(`Error al procesar archivo soltado ${filePath}:`, err);
+            }
+          }
+
+          if (loadedFiles.length > 0) {
+            void addFiles(loadedFiles);
+          }
+        }
+      })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((err) => console.warn('No se pudo suscribir a Tauri onDragDropEvent:', err));
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [addFiles]);
+
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    const files = Array.from(e.dataTransfer.files).filter(
+    const rawFiles = Array.from(e.dataTransfer.files);
+
+    const projectFile = rawFiles.find((f) => f.name.endsWith('.openmt') || f.name.endsWith('.json'));
+    if (projectFile && rawFiles.length === 1) {
+      void readProjectFromJsonFile(projectFile)
+        .then((proj) => {
+          useDaw.getState().loadProject(proj);
+        })
+        .catch(() => {});
+      return;
+    }
+
+    const files = rawFiles.filter(
       (f) => f.type.startsWith('audio/') || AUDIO_EXT.test(f.name),
     );
     if (files.length) void addFiles(files);

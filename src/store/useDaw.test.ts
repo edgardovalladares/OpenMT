@@ -248,4 +248,20 @@ describe('useDaw store improvements', () => {
     expect(useDaw.getState().tracks).toHaveLength(1);
     expect(useDaw.getState().tracks[0].id).toBe('t-1');
   });
+
+  it('assigns random colors to songs and preserves them in setlist and project export', () => {
+    const { addSong, getProjectData } = useDaw.getState();
+    const songId = addSong('Mi Canción Con Color');
+
+    const song = useDaw.getState().songs.find((s) => s.id === songId);
+    expect(song).toBeDefined();
+    expect(song?.color).toBeDefined();
+    expect(song?.color).toMatch(/^#[0-9a-f]{6}$/i);
+
+    // Verify it exports in project data
+    const proj = getProjectData();
+    const exportedSong = proj.songs?.find((s) => s.id === songId);
+    expect(exportedSong).toBeDefined();
+    expect(exportedSong?.color).toBe(song?.color);
+  });
 });

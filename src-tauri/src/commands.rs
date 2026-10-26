@@ -5,6 +5,7 @@ use tauri::State;
 use crate::audio::decoder::decode_file;
 use crate::audio::engine::AudioEngine;
 use crate::audio::track::TrackState;
+use crate::server::{LanInfo, LanServer};
 
 #[derive(Serialize, Deserialize)]
 pub struct FileMetadataResponse {
@@ -137,4 +138,75 @@ pub fn daw_get_state(engine: State<'_, Arc<AudioEngine>>, song_id: String) -> Re
         meter_l,
         meter_r,
     })
+}
+
+#[tauri::command]
+pub fn daw_get_lan_info(server: State<'_, Arc<LanServer>>) -> Result<LanInfo, String> {
+    Ok(server.get_info())
+}
+
+#[tauri::command]
+pub fn daw_send_lyrics_sync(
+    server: State<'_, Arc<LanServer>>,
+    msg: serde_json::Value,
+) -> Result<(), String> {
+    server.update_state(msg);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn daw_read_file_bytes(file_path: String) -> Result<Vec<u8>, String> {
+    std::fs::read(&file_path).map_err(|e| format!("Error al leer archivo {}: {}", file_path, e))
+}
+
+#[tauri::command]
+pub fn daw_file_exists(file_path: String) -> bool {
+    std::path::Path::new(&file_path).exists()
+}
+
+#[tauri::command]
+pub fn daw_get_default_projects_dir() -> String {
+    #[cfg(windows)]
+    {
+        if let Ok(user_profile) = std::env::var("USERPROFILE") {
+            let path = std::path::Path::new(&user_profile).join("Documents").join("OpenMT Projects");
+            return path.to_string_lossy().to_string();
+        }
+    }
+    "./OpenMT Projects".to_string()
+}
+
+#[tauri::command]
+pub fn daw_save_project_folder(
+    folder_path: String,
+    project_json: String,
+    lyrics_files: Vec<(String, String)>,
+    summary_text: String,
+) -> Result<String, String> {
+    let base_dir = std::path::Path::new(&folder_path);
+    if !base_dir.exists() {
+        std::fs::create_dir_all(base_dir).map_err(|e| format!("Error creando carpeta del proyecto: {}", e))?;
+    }
+
+    // 1. Guardar project.openmt
+    let project_file = base_dir.join("project.openmt");
+    std::fs::write(&project_file, project_json.as_bytes()).map_err(|e| format!("Error guardando project.openmt: {}", e))?;
+
+    // 2. Guardar letras en subcarpeta lyrics/
+    let lyrics_dir = base_dir.join("lyrics");
+    let _ = std::fs::create_dir_all(&lyrics_dir);
+    for (name, content) in lyrics_files {
+        let safe_name: String = name
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' { c } else { '_' })
+            .collect();
+        let lrc_path = lyrics_dir.join(format!("{}.lrc", safe_name.trim()));
+        let _ = std::fs::write(lrc_path, content.as_bytes());
+    }
+
+    // 3. Guardar resumen de repertorio
+    let summary_file = base_dir.join("repertorio_setlist.txt");
+    let _ = std::fs::write(summary_file, summary_text.as_bytes());
+
+    Ok(project_file.to_string_lossy().to_string())
 }

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v3.0.0-blue" alt="Version 3.0.0" />
+  <img src="https://img.shields.io/badge/version-v3.1.0-blue" alt="Version 3.1.0" />
   <img src="https://img.shields.io/badge/Tauri-2.0-orange?logo=tauri" alt="Tauri 2.0" />
   <img src="https://img.shields.io/badge/Rust-1.80+-black?logo=rust" alt="Rust" />
   <img src="https://img.shields.io/badge/Audio%20Engine-CPAL%20%2B%20Symphonia-red" alt="CPAL + Symphonia" />
@@ -22,13 +22,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.0.0/OpenMT_3.0.0_x64-setup.exe">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.1.0/OpenMT_3.1.0_x64-setup.exe">
     <img src="https://img.shields.io/badge/Descargar-Instalador%20Windows%20(.exe)-2ea44f?style=for-the-badge&logo=windows" alt="Descargar Instalador Windows" />
   </a>
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.0.0/OpenMT_3.0.0_x64_Portable.exe">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.1.0/OpenMT_3.1.0_x64_Portable.exe">
     <img src="https://img.shields.io/badge/Descargar-Versi%C3%B3n%20Portable%20(.exe)-0969da?style=for-the-badge&logo=windows" alt="Descargar Portable Windows" />
   </a>
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.0.0/OpenMT_3.0.0_x64_en-US.msi">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.1.0/OpenMT_3.1.0_x64_en-US.msi">
     <img src="https://img.shields.io/badge/Descargar-Instalador%20MSI%20(.msi)-5c5c5c?style=for-the-badge&logo=windows" alt="Descargar MSI Windows" />
   </a>
 </p>
@@ -38,7 +38,7 @@
 ## 📖 Tabla de Contenidos
 
 1. [Acerca de OpenMT](#-acerca-de-openmt)
-2. [Novedades de la Versión 3.0.0 (Tauri 2 + Rust)](#-novedades-de-la-versión-300-arquitectura-nativa-tauri-2--rust)
+2. [Novedades de la Versión 3.1.0](#-novedades-de-la-versión-310)
 3. [Descargas y Versiones Oficiales](#-descargas-y-versiones-oficiales)
 4. [Características Principales](#-características-principales)
    - [Motor Nativo de Audio Multihilo (Rust)](#-1-motor-nativo-de-audio-multihilo-rust--cpal--symphonia)
@@ -74,27 +74,36 @@
 
 ---
 
-## ⚡ Novedades de la Versión 3.0.0 (Arquitectura Nativa Tauri 2 + Rust)
+## ⚡ Novedades de la Versión 3.1.0
 
-La versión 3.0.0 representa el salto evolutivo más grande en la historia de OpenMT:
+La versión 3.1.0 incorpora mejoras fundamentales para directos, estabilidad de red local y flujo de trabajo en vivo:
 
-- **Ruptura de la barrera de memoria V8/Chromium:** Anteriormente, cargar más de 3 canciones simultáneas con 15+ pistas de audio en Electron podía saturar el límite de memoria del motor Chromium (provocando errores *Out-Of-Memory* o congelamientos). En v3.0.0, la gestión de audio se delega a hilos nativos en **Rust**, eliminando por completo cualquier restricción de RAM y permitiendo setlists de docenas de canciones.
-- **Motor CPAL de ultra baja latencia:** Control directo de los dispositivos de sonido del sistema operativo (WASAPI en Windows), con soporte automático de formatos `SampleFormat::F32`, `SampleFormat::I16` y `SampleFormat::U16` sin caídas de audio.
-- **Decodificación ultrarrápida con Symphonia:** Soporte de códecs nativos en Rust (`WAV`, `MP3`, `FLAC`, `OGG`, `M4A/AAC`, `AIFF`) liberando al hilo visual de la UI.
-- **Arranque ultra estable y single-instance:** Protección contra cierres prematuros en milisegundos mediante inicialización tolerante a fallos de hardware y plugin de instancia única (`tauri-plugin-single-instance`).
-- **Arquitectura Híbrida Inteligente:** Cuando se ejecuta en el binario de escritorio, se activa automáticamente el motor nativo de Rust. Cuando se ejecuta en navegador web o entornos ligeros, se utiliza el motor Web Audio API + Signalsmith WASM.
+- **Servidor LAN Nativo Autónomo en Rust (Wi-Fi y Cable Ethernet):**
+  - Servidor HTTP/SSE ultrarrápido integrado directamente en Tauri y Rust sin requerir NodeJS o servicios en la nube.
+  - Sincronización en tiempo real de letras, canciones y posición de reproducción a cualquier dispositivo conectado por Wi-Fi o cable de red local (teleprompter de músicos, proyector del templo o pantalla de escenario).
+  - Selector de interfaces IP (detección automática de Wi-Fi, Ethernet, Hotspot o IP manual).
+- **Soporte Drag & Drop Nativo en Windows:**
+  - Arrastra y suelta archivos de audio (`.wav`, `.mp3`, etc.) o proyectos guardados (`.openmt`, `.json`) directamente sobre la aplicación en ejecución.
+- **Auto-recuperación de Pistas desde Disco (`filePath`):**
+  - Al abrir un proyecto guardado, OpenMT reubica y reconecta automáticamente las pistas de audio originales desde su ruta en disco, eliminando la necesidad de reasignar archivos perdidos.
+- **Guardado Estructurado de Proyectos (`.openmt`):**
+  - Nuevo comando para guardar proyectos organizados en una carpeta completa con el archivo maestro `project.openmt`, subcarpeta `lyrics/` con las letras `.lrc` de cada tema y resumen para músicos en `repertorio_setlist.txt`.
+- **Detección Inteligente de Secciones Musicales:**
+  - Motor de detección de secciones musicales guiado por análisis de transitorios en pistas de Guía (Cues) y rejilla de compases del Click/Metrónomo.
+- **Setlist y Gestor de Repertorio Renovado (Grid 3x3):**
+  - Cuadrícula ágil de acceso directo por colores, contador de pistas, indicador de letras LRC y buscador instantáneo de temas.
 
 ---
 
 ## 📦 Descargas y Versiones Oficiales
 
-Puedes descargar los paquetes oficiales directamente desde la sección de **[Releases de GitHub (v3.0.0)](https://github.com/edgardovalladares/OpenMT/releases/tag/v3.0.0)**:
+Puedes descargar los paquetes oficiales directamente desde la sección de **[Releases de GitHub (v3.1.0)](https://github.com/edgardovalladares/OpenMT/releases/tag/v3.1.0)**:
 
 | Paquete | Archivo | Tamaño | Descripción |
 | :--- | :--- | :---: | :--- |
-| **Instalador Windows** | [`OpenMT_3.0.0_x64-setup.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.0.0/OpenMT_3.0.0_x64-setup.exe) | ~375 MB | **Recomendado:** Instalador con asistente NSIS, accesos directos en inicio/escritorio y desinstalador limpio. |
-| **Versión Portable** | [`OpenMT_3.0.0_x64_Portable.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.0.0/OpenMT_3.0.0_x64_Portable.exe) | ~378 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
-| **Instalador MSI** | [`OpenMT_3.0.0_x64_en-US.msi`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.0.0/OpenMT_3.0.0_x64_en-US.msi) | ~372 MB | Paquete Windows Installer MSI estándar para instalaciones corporativas o despliegues automatizados. |
+| **Instalador Windows** | [`OpenMT_3.1.0_x64-setup.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.1.0/OpenMT_3.1.0_x64-setup.exe) | ~375 MB | **Recomendado:** Instalador con asistente NSIS, accesos directos en inicio/escritorio y desinstalador limpio. |
+| **Versión Portable** | [`OpenMT_3.1.0_x64_Portable.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.1.0/OpenMT_3.1.0_x64_Portable.exe) | ~378 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
+| **Instalador MSI** | [`OpenMT_3.1.0_x64_en-US.msi`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.1.0/OpenMT_3.1.0_x64_en-US.msi) | ~372 MB | Paquete Windows Installer MSI estándar para instalaciones corporativas o despliegues automatizados. |
 
 ---
 

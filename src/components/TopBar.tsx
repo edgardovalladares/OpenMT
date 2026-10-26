@@ -140,9 +140,9 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
         </div>
       </section>
 
-      {/* Panel Repertorio / Setlist de Canciones */}
-      <section className="panel panel--setlist" aria-label="Repertorio en Vivo">
-        <span className="panel__label">SETLIST / REPERTORIO</span>
+      {/* Panel Repertorio / Setlist de Canciones (Grid 3x3) */}
+      <section className="panel panel--setlist" aria-label="Repertorio en Vivo (Grid 3x3)">
+        <span className="panel__label">SETLIST / REPERTORIO (GRID 3x3)</span>
         <SongCards />
       </section>
 

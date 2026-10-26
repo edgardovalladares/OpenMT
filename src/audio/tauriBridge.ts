@@ -98,3 +98,44 @@ export async function tauriSwitchSong(songId: string): Promise<void> {
 export async function tauriGetState(songId: string): Promise<TauriPlaybackState> {
   return await invoke<TauriPlaybackState>('daw_get_state', { songId });
 }
+
+export interface TauriLanInfo {
+  localUrl: string;
+  ips: string[];
+  port: number;
+}
+
+export async function tauriGetLanInfo(): Promise<TauriLanInfo> {
+  return await invoke<TauriLanInfo>('daw_get_lan_info');
+}
+
+export async function tauriSendLyricsSync(msg: unknown): Promise<void> {
+  await invoke('daw_send_lyrics_sync', { msg });
+}
+
+export async function tauriReadFileBytes(filePath: string): Promise<Uint8Array> {
+  const bytes = await invoke<number[]>('daw_read_file_bytes', { filePath });
+  return new Uint8Array(bytes);
+}
+
+export async function tauriFileExists(filePath: string): Promise<boolean> {
+  return await invoke<boolean>('daw_file_exists', { filePath });
+}
+
+export async function tauriGetDefaultProjectsDir(): Promise<string> {
+  return await invoke<string>('daw_get_default_projects_dir');
+}
+
+export async function tauriSaveProjectFolder(
+  folderPath: string,
+  projectJson: string,
+  lyricsFiles: Array<[string, string]>,
+  summaryText: string,
+): Promise<string> {
+  return await invoke<string>('daw_save_project_folder', {
+    folderPath,
+    projectJson,
+    lyricsFiles,
+    summaryText,
+  });
+}

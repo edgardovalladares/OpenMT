@@ -1,5 +1,6 @@
 import type { LyricsSyncMessage, LyricsDisplayOptions } from '../types/lyrics';
 import type { DataConnection } from 'peerjs';
+import { isTauri, tauriSendLyricsSync } from './tauriBridge';
 
 export const CHANNEL_NAME = 'openmt_lyrics_channel';
 export const STORAGE_KEY = 'openmt_lyrics_state';
@@ -82,7 +83,12 @@ export function isLocalHost(): boolean {
     h.startsWith('192.168.') ||
     h.startsWith('10.') ||
     h.startsWith('172.') ||
-    h.endsWith('.local')
+    h.startsWith('169.254.') ||
+    h.endsWith('.local') ||
+    window.location.port === '3000' ||
+    window.location.port === '3001' ||
+    window.location.port === '5173' ||
+    /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)
   );
 }
 
@@ -270,8 +276,10 @@ export function broadcastTimeUpdate(
     }
   }
 
-  // 1.1 IPC directo nativo de Electron para servidor LAN
-  if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
+  // 1.1 IPC directo nativo de Tauri y Electron para servidor LAN
+  if (isTauri()) {
+    void tauriSendLyricsSync(msg);
+  } else if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
     try {
       window.electronAPI.sendLyricsSync(msg);
     } catch {
@@ -335,7 +343,9 @@ export function broadcastLyricsUpdate(
     }
   }
 
-  if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
+  if (isTauri()) {
+    void tauriSendLyricsSync(msg);
+  } else if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
     try {
       window.electronAPI.sendLyricsSync(msg);
     } catch {
@@ -393,7 +403,9 @@ export function broadcastFullSync(state: {
     }
   }
 
-  if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
+  if (isTauri()) {
+    void tauriSendLyricsSync(msg);
+  } else if (typeof window !== 'undefined' && window.electronAPI?.sendLyricsSync) {
     try {
       window.electronAPI.sendLyricsSync(msg);
     } catch {

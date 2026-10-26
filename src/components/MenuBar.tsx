@@ -5,6 +5,7 @@ import {
   Save,
   FolderDown,
   FolderArchive,
+  FolderPlus,
   AlertTriangle,
   Music,
   Check,
@@ -21,7 +22,9 @@ import {
   exportProjectAsJsonFile,
   readProjectFromJsonFile,
   saveProjectLocally,
+  saveProjectFolder,
 } from '../utils/projectManager';
+import { isTauri } from '../audio/tauriBridge';
 
 interface MenuBarProps {
   onOpenExport: () => void;
@@ -107,6 +110,18 @@ export function MenuBar({
     exportProjectAsJsonFile(data);
   };
 
+  const handleSaveProjectFolder = async () => {
+    setActiveMenu(null);
+    try {
+      const data = getProjectData();
+      saveProjectLocally(data);
+      const res = await saveProjectFolder(data);
+      alert(`Carpeta guardada con éxito en:\n${res.folderPath}\n\nIncluye: project.openmt, letras .lrc individuales y resumen de repertorio.`);
+    } catch (err) {
+      alert(`Error al guardar en carpeta: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const handleLoadJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,11 +129,18 @@ export function MenuBar({
       const proj = await readProjectFromJsonFile(file);
       saveProjectLocally(proj);
       loadProject(proj);
-      if (proj.tracks.length > 0) {
+      if (!isTauri() && proj.tracks.length > 0) {
         onOpenRelink();
+      } else if (isTauri()) {
+        setTimeout(() => {
+          const stillMissing = useDaw.getState().tracks.some((t) => t.status === 'missing');
+          if (stillMissing) {
+            onOpenRelink();
+          }
+        }, 500);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al cargar archivo JSON');
+      alert(err instanceof Error ? err.message : 'Error al cargar archivo de proyecto');
     }
     e.target.value = '';
     setActiveMenu(null);
@@ -177,11 +199,21 @@ export function MenuBar({
               <button
                 type="button"
                 className="menu-item"
+                onClick={handleSaveProjectFolder}
+                disabled={tracks.length === 0}
+              >
+                <FolderPlus size={14} className="menu-item__icon" />
+                <span>Guardar en Carpeta de Proyecto…</span>
+              </button>
+
+              <button
+                type="button"
+                className="menu-item"
                 onClick={handleSaveJson}
                 disabled={tracks.length === 0}
               >
                 <Save size={14} className="menu-item__icon" />
-                <span>Guardar Proyecto (.json)</span>
+                <span>Guardar Paquete (.openmt / .json)</span>
               </button>
 
               <button
@@ -190,7 +222,7 @@ export function MenuBar({
                 onClick={() => jsonInputRef.current?.click()}
               >
                 <FolderDown size={14} className="menu-item__icon" />
-                <span>Cargar Proyecto (.json)…</span>
+                <span>Cargar Proyecto (.openmt / .json)…</span>
               </button>
 
               <button
@@ -470,7 +502,7 @@ export function MenuBar({
         ref={jsonInputRef}
         type="file"
         hidden
-        accept=".json,application/json"
+        accept=".openmt,.daw.json,.json,application/json"
         onChange={handleLoadJson}
       />
     </div>

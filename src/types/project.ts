@@ -29,8 +29,10 @@ export interface ProjectTrackData {
   fadeIn?: number;
   fadeOut?: number;
   pitchLocked?: boolean;
+  filePath?: string; // Ruta original del archivo de audio en el disco
   fileInfo: {
     name: string;
+    path?: string; // Ruta completa guardada
     size?: number;
     type?: string;
     lastModified?: number;
@@ -40,6 +42,7 @@ export interface ProjectTrackData {
 export interface SongItem {
   id: string;
   name: string; // e.g. "Canción 1 - Intro", "Canción 2"
+  color?: string; // Color aleatorio asignado para el setlist (3x3 grid)
   tracks: ProjectTrackData[];
   refTrackId: string | null;
   master: {

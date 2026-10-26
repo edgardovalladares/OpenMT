@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Upload, Search, Trash2, X } from 'lucide-react';
+import { Save, Upload, Search, Trash2, X, FolderPlus } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import {
   listSavedProjects,
@@ -8,7 +8,9 @@ import {
   deleteProjectLocally,
   exportProjectAsJsonFile,
   readProjectFromJsonFile,
+  saveProjectFolder,
 } from '../utils/projectManager';
+import { isTauri } from '../audio/tauriBridge';
 import type { ProjectSummary } from '../types/project';
 import { formatTime } from '../audio/music';
 
@@ -59,6 +61,28 @@ export function SavedProjectsModal({ isOpen, onClose, onOpenRelink }: SavedProje
     }
   };
 
+  const handleSaveToFolder = async () => {
+    if (!saveName.trim()) return;
+    try {
+      setProjectName(saveName.trim());
+      const data = getProjectData();
+      data.name = saveName.trim();
+      saveProjectLocally(data);
+      refreshList();
+      const res = await saveProjectFolder(data);
+      setFeedbackMsg({
+        type: 'ok',
+        text: `Carpeta guardada en "${res.folderPath}" con project.openmt, letras .lrc y repertorio`,
+      });
+      setTimeout(() => setFeedbackMsg(null), 5000);
+    } catch (err) {
+      setFeedbackMsg({
+        type: 'err',
+        text: `Error al guardar en carpeta: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  };
+
   const handleLoad = (id: string) => {
     const proj = loadProjectLocally(id);
     if (!proj) {
@@ -67,9 +91,15 @@ export function SavedProjectsModal({ isOpen, onClose, onOpenRelink }: SavedProje
     }
     loadProject(proj);
     onClose();
-    const hasMissing = proj.tracks.length > 0;
-    if (hasMissing && onOpenRelink) {
+    if (!isTauri() && proj.tracks.length > 0 && onOpenRelink) {
       onOpenRelink();
+    } else if (isTauri() && onOpenRelink) {
+      setTimeout(() => {
+        const stillMissing = useDaw.getState().tracks.some((t) => t.status === 'missing');
+        if (stillMissing) {
+          onOpenRelink();
+        }
+      }, 500);
     }
   };
 
@@ -96,13 +126,20 @@ export function SavedProjectsModal({ isOpen, onClose, onOpenRelink }: SavedProje
       loadProject(proj);
       refreshList();
       onClose();
-      if (proj.tracks.length > 0 && onOpenRelink) {
+      if (!isTauri() && proj.tracks.length > 0 && onOpenRelink) {
         onOpenRelink();
+      } else if (isTauri() && onOpenRelink) {
+        setTimeout(() => {
+          const stillMissing = useDaw.getState().tracks.some((t) => t.status === 'missing');
+          if (stillMissing) {
+            onOpenRelink();
+          }
+        }, 500);
       }
     } catch (err) {
       setFeedbackMsg({
         type: 'err',
-        text: err instanceof Error ? err.message : 'Error al leer el archivo JSON',
+        text: err instanceof Error ? err.message : 'Error al leer el archivo de proyecto',
       });
     }
     e.target.value = '';
@@ -137,12 +174,22 @@ export function SavedProjectsModal({ isOpen, onClose, onOpenRelink }: SavedProje
               <button
                 type="button"
                 className="btn btn--accent"
+                onClick={handleSaveToFolder}
+                disabled={tracks.length === 0}
+                title="Guarda una carpeta completa con project.openmt, letras .lrc y repertorio"
+              >
+                <FolderPlus size={14} />
+                <span>Guardar en Carpeta</span>
+              </button>
+              <button
+                type="button"
+                className="btn"
                 onClick={handleSaveCurrent}
                 disabled={tracks.length === 0}
-                title={tracks.length === 0 ? 'Agrega pistas primero' : 'Guardar proyecto'}
+                title="Guardar copia rápida en almacenamiento local"
               >
                 <Save size={14} />
-                <span>Guardar Proyecto</span>
+                <span>Guardar Local</span>
               </button>
             </div>
             {tracks.length === 0 && (
@@ -168,10 +215,10 @@ export function SavedProjectsModal({ isOpen, onClose, onOpenRelink }: SavedProje
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <label className="btn" title="Cargar proyecto desde archivo .json">
+            <label className="btn" title="Cargar proyecto desde archivo (.openmt, .daw.json o .json)">
               <Upload size={14} />
-              <span>Abrir JSON externo…</span>
-              <input type="file" hidden accept=".json,application/json" onChange={handleJsonUpload} />
+              <span>Abrir Archivo (.openmt / .json)…</span>
+              <input type="file" hidden accept=".openmt,.daw.json,.json,application/json" onChange={handleJsonUpload} />
             </label>
           </div>
 
@@ -217,9 +264,9 @@ export function SavedProjectsModal({ isOpen, onClose, onOpenRelink }: SavedProje
                         type="button"
                         className="btn btn--tiny"
                         onClick={() => handleDownload(p.id)}
-                        title="Descargar como archivo JSON"
+                        title="Descargar paquete (.openmt)"
                       >
-                        Descargar JSON
+                        Descargar .openmt
                       </button>
                       <button
                         type="button"

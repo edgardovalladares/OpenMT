@@ -120,10 +120,10 @@ export function SectionsBar({ duration }: { duration: number }) {
             type="button"
             className="btn btn--tiny"
             onClick={() => autoGenerateSections()}
-            title="Autodetectar secciones basadas en compases y BPM"
+            title="Autodetectar secciones inteligentemente guiadas por Guía, Click y BPM"
           >
             <Sparkles size={12} />
-            <span>Auto</span>
+            <span>Auto Guía/Click</span>
           </button>
         </div>
       </div>
@@ -139,7 +139,7 @@ export function SectionsBar({ duration }: { duration: number }) {
               onClick={() => autoGenerateSections()}
             >
               <Sparkles size={12} />
-              <span>Autodetectar con BPM</span>
+              <span>Autodetectar con Guía y Click</span>
             </button>
             <span>o</span>
             <button

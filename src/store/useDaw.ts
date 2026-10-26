@@ -8,6 +8,8 @@ import type { DawProject, ProjectTrackData, SongSection } from '../types/project
 import type { LyricsData, LyricsDisplayOptions } from '../types/lyrics';
 import { broadcastLyricsUpdate, broadcastTimeUpdate } from '../audio/lyricsSync';
 import { selectRef } from './derived';
+import { detectSmartSections } from '../audio/sectionDetector';
+import { isTauri, tauriFileExists, tauriReadFileBytes } from '../audio/tauriBridge';
 
 export const MAX_TRACKS = 20;
 export type ThemeId = 'live-dark' | 'live-light' | 'live-neon';
@@ -36,8 +38,10 @@ export interface TrackState {
   fadeIn: number;
   fadeOut: number;
   pitchLocked?: boolean;
+  filePath?: string;
   fileMeta?: {
     name: string;
+    path?: string;
     size?: number;
     type?: string;
     lastModified?: number;
@@ -68,6 +72,7 @@ export interface HistorySnapshot {
 export interface SongTabItem {
   id: string;
   name: string;
+  color?: string; // Color distintivo para la tarjeta del setlist (grid 3x3)
   tracks: TrackState[];
   refTrackId: string | null;
   masterVolPos: number;
@@ -181,10 +186,44 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 let undoStack: HistorySnapshot[] = [];
 let redoStack: HistorySnapshot[] = [];
 
+export const SETLIST_COLORS = [
+  '#f43f5e', // Rose
+  '#f97316', // Orange
+  '#eab308', // Amber / Gold
+  '#10b981', // Emerald
+  '#06b6d4', // Cyan
+  '#3b82f6', // Electric Blue
+  '#8b5cf6', // Violet
+  '#ec4899', // Pink
+  '#14b8a6', // Teal
+  '#a855f7', // Purple
+  '#84cc16', // Lime
+  '#ef4444', // Red
+  '#0ea5e9', // Sky Blue
+  '#f59e0b', // Warm Amber
+];
+
+export function getRandomSongColor(): string {
+  const idx = Math.floor(Math.random() * SETLIST_COLORS.length);
+  return SETLIST_COLORS[idx];
+}
+
+export function getSongColor(song: { id: string; color?: string }, fallbackIndex = 0): string {
+  if (song.color) return song.color;
+  let hash = 0;
+  for (let i = 0; i < song.id.length; i++) {
+    hash = (hash << 5) - hash + song.id.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = (Math.abs(hash) + fallbackIndex) % SETLIST_COLORS.length;
+  return SETLIST_COLORS[idx];
+}
+
 const initialSongId = 'song-1';
 const initialSong: SongTabItem = {
   id: initialSongId,
   name: 'Canción 1',
+  color: SETLIST_COLORS[0],
   tracks: [],
   refTrackId: null,
   masterVolPos: UNITY_POS,
@@ -280,6 +319,7 @@ export const useDaw = create<DawState>()((set, get) => {
       const newSong: SongTabItem = {
         id: newId,
         name: songName,
+        color: getRandomSongColor(),
         tracks: [],
         refTrackId: null,
         masterVolPos: UNITY_POS,
@@ -468,6 +508,7 @@ export const useDaw = create<DawState>()((set, get) => {
         ...src,
         id: newId,
         name: `${src.name} (Copia)`,
+        color: getRandomSongColor(),
         tracks: clonedTracks,
         sections: src.sections.map((sec) => ({ ...sec, id: crypto.randomUUID() })),
       };
@@ -556,49 +597,14 @@ export const useDaw = create<DawState>()((set, get) => {
 
     autoGenerateSections: () => {
       const s = get();
-      const ref = selectRef(s);
-      const totalDur = Math.max(0.1, ...s.tracks.map((t) => t.duration));
-      if (totalDur <= 1) return;
-
+      if (s.tracks.length === 0) return;
       pushUndo();
-      const bpm = ref?.bpm && ref.bpm > 40 && ref.bpm < 240 ? ref.bpm : 120;
-      const barSec = (60 / bpm) * 4;
-
-      const template = [
-        { name: 'Intro', bars: 8 },
-        { name: 'Verso 1', bars: 16 },
-        { name: 'Pre-Coro', bars: 8 },
-        { name: 'Coro 1', bars: 16 },
-        { name: 'Verso 2', bars: 16 },
-        { name: 'Coro 2', bars: 16 },
-        { name: 'Puente', bars: 8 },
-        { name: 'Coro 3', bars: 16 },
-        { name: 'Outro', bars: 8 },
-      ];
-
-      const newSections: SongSection[] = [];
-      let curTime = 0;
-      let idx = 0;
-
-      while (curTime < totalDur - 1 && idx < 20) {
-        const item = template[idx % template.length];
-        const dur = item.bars * barSec;
-        const endTime = Math.min(totalDur, curTime + dur);
-        if (endTime - curTime < 1) break;
-
-        newSections.push({
-          id: crypto.randomUUID(),
-          name: idx < template.length ? item.name : `${item.name} (${Math.floor(idx / template.length) + 1})`,
-          start: Math.round(curTime * 100) / 100,
-          end: Math.round(endTime * 100) / 100,
-          colorIndex: idx % 8,
-        });
-
-        curTime = endTime;
-        idx++;
+      const ref = selectRef(s);
+      const bpmFallback = ref?.bpm && ref.bpm > 40 && ref.bpm < 240 ? ref.bpm : 120;
+      const detected = detectSmartSections(s.tracks, bpmFallback, s.lyrics?.rawLrc);
+      if (detected.length > 0) {
+        set({ sections: detected });
       }
-
-      set({ sections: newSections });
     },
 
     // Recorte y Fades
@@ -736,6 +742,8 @@ export const useDaw = create<DawState>()((set, get) => {
         const colorIndex = colorPalette.find((i) => !used.has(i)) ?? (targetTracks.length % MAX_TRACKS);
         const isRhythmicOrGuide = /drum|bater[ií]a|perc|click|claqueta|metr[oó]nomo|hi-?hat|snare|kick|caja|bombo|shaker|pandereta|tambor|gui[aá]|gu[ií]de/i.test(file.name);
 
+        const detectedPath = (file as any).path || (file as any).filePath || undefined;
+
         const newTrack: TrackState = {
           id,
           name: file.name.replace(/\.[^.]+$/, ''),
@@ -758,8 +766,10 @@ export const useDaw = create<DawState>()((set, get) => {
           fadeIn: 0,
           fadeOut: 0,
           pitchLocked: isRhythmicOrGuide,
+          filePath: detectedPath,
           fileMeta: {
             name: file.name,
+            path: detectedPath,
             size: file.size,
             type: file.type,
             lastModified: file.lastModified,
@@ -825,11 +835,14 @@ export const useDaw = create<DawState>()((set, get) => {
       const existing = get().tracks.find((t) => t.id === id);
       if (!existing) return;
       pushUndo();
+      const detectedPath = (file as any).path || (file as any).filePath || undefined;
       patch(id, {
         status: 'loading',
         error: undefined,
+        filePath: detectedPath || existing.filePath,
         fileMeta: {
           name: file.name,
+          path: detectedPath || existing.fileMeta?.path,
           size: file.size,
           type: file.type,
           lastModified: file.lastModified,
@@ -924,10 +937,61 @@ export const useDaw = create<DawState>()((set, get) => {
 
       let songsList: SongTabItem[] = [];
       if (project.songs && project.songs.length > 0) {
-        songsList = project.songs.map((song) => ({
+        songsList = project.songs.map((song, index) => ({
           id: song.id,
           name: song.name,
-          tracks: song.tracks.map((t) => ({
+          color: song.color || getSongColor({ id: song.id, color: song.color }, index),
+          tracks: song.tracks.map((t) => {
+            const originPath = t.filePath || t.fileInfo?.path;
+            return {
+              id: t.id,
+              name: t.name,
+              colorIndex: t.colorIndex,
+              status: 'missing',
+              duration: t.duration,
+              peaks: null,
+              volPos: t.volPos,
+              pan: t.pan,
+              mute: t.mute,
+              solo: t.solo,
+              semitones: t.semitones,
+              bpm: t.bpm,
+              bpmConfidence: t.bpmConfidence,
+              key: t.key,
+              keyConfidence: t.keyConfidence,
+              analysis: t.bpm && t.key ? 'done' : 'pending',
+              trimStart: t.trimStart ?? 0,
+              trimEnd: t.trimEnd ?? t.duration,
+              fadeIn: t.fadeIn ?? 0,
+              fadeOut: t.fadeOut ?? 0,
+              pitchLocked: t.pitchLocked ?? false,
+              filePath: originPath,
+              fileMeta: {
+                name: t.fileInfo?.name || `${t.name}.wav`,
+                path: originPath,
+                size: t.fileInfo?.size,
+                type: t.fileInfo?.type,
+                lastModified: t.fileInfo?.lastModified,
+              },
+            };
+          }),
+          refTrackId: song.refTrackId,
+          masterVolPos: song.master?.volPos ?? UNITY_POS,
+          tempoRatio: song.master?.tempoRatio ?? 1,
+          masterSemitones: song.master?.masterSemitones ?? 0,
+          masterCents: song.master?.masterCents ?? 0,
+          keyLock: song.master?.keyLock ?? true,
+          sections: song.sections ?? [],
+          activeSectionId: song.activeSectionId ?? null,
+          loopSectionId: song.loopSectionId ?? null,
+          queuedSectionId: song.queuedSectionId ?? null,
+          lyrics: song.lyrics ?? { rawLrc: '', offsetMs: 350 },
+          zoom: song.zoom ?? 1,
+        }));
+      } else {
+        const legacyTracks: TrackState[] = (project.tracks || []).map((t) => {
+          const originPath = t.filePath || t.fileInfo?.path;
+          return {
             id: t.id,
             name: t.name,
             colorIndex: t.colorIndex,
@@ -949,51 +1013,22 @@ export const useDaw = create<DawState>()((set, get) => {
             fadeIn: t.fadeIn ?? 0,
             fadeOut: t.fadeOut ?? 0,
             pitchLocked: t.pitchLocked ?? false,
-            fileMeta: t.fileInfo,
-          })),
-          refTrackId: song.refTrackId,
-          masterVolPos: song.master?.volPos ?? UNITY_POS,
-          tempoRatio: song.master?.tempoRatio ?? 1,
-          masterSemitones: song.master?.masterSemitones ?? 0,
-          masterCents: song.master?.masterCents ?? 0,
-          keyLock: song.master?.keyLock ?? true,
-          sections: song.sections ?? [],
-          activeSectionId: song.activeSectionId ?? null,
-          loopSectionId: song.loopSectionId ?? null,
-          queuedSectionId: song.queuedSectionId ?? null,
-          lyrics: song.lyrics ?? { rawLrc: '', offsetMs: 350 },
-          zoom: song.zoom ?? 1,
-        }));
-      } else {
-        const legacyTracks: TrackState[] = (project.tracks || []).map((t) => ({
-          id: t.id,
-          name: t.name,
-          colorIndex: t.colorIndex,
-          status: 'missing',
-          duration: t.duration,
-          peaks: null,
-          volPos: t.volPos,
-          pan: t.pan,
-          mute: t.mute,
-          solo: t.solo,
-          semitones: t.semitones,
-          bpm: t.bpm,
-          bpmConfidence: t.bpmConfidence,
-          key: t.key,
-          keyConfidence: t.keyConfidence,
-          analysis: t.bpm && t.key ? 'done' : 'pending',
-          trimStart: t.trimStart ?? 0,
-          trimEnd: t.trimEnd ?? t.duration,
-          fadeIn: t.fadeIn ?? 0,
-          fadeOut: t.fadeOut ?? 0,
-          pitchLocked: t.pitchLocked ?? false,
-          fileMeta: t.fileInfo,
-        }));
+            filePath: originPath,
+            fileMeta: {
+              name: t.fileInfo?.name || `${t.name}.wav`,
+              path: originPath,
+              size: t.fileInfo?.size,
+              type: t.fileInfo?.type,
+              lastModified: t.fileInfo?.lastModified,
+            },
+          };
+        });
 
         songsList = [
           {
             id: 'song-1',
             name: project.name || 'Canción 1',
+            color: SETLIST_COLORS[0],
             tracks: legacyTracks,
             refTrackId: project.master?.refTrackId ?? (legacyTracks[0]?.id ?? null),
             masterVolPos: project.master?.volPos ?? UNITY_POS,
@@ -1048,6 +1083,31 @@ export const useDaw = create<DawState>()((set, get) => {
         activeSong.name,
         get().lyricsOptions,
       );
+
+      // Auto-recuperación de archivos desde su ruta original en disco si estamos en Tauri/Escritorio
+      if (isTauri()) {
+        setTimeout(async () => {
+          const currentTracks = get().tracks;
+          for (const tr of currentTracks) {
+            const originPath = tr.filePath || tr.fileMeta?.path;
+            if (originPath) {
+              try {
+                const exists = await tauriFileExists(originPath);
+                if (exists) {
+                  const bytes = await tauriReadFileBytes(originPath);
+                  const file = new File([bytes as unknown as BlobPart], tr.fileMeta?.name || `${tr.name}.wav`, {
+                    type: tr.fileMeta?.type || 'audio/wav',
+                  });
+                  (file as unknown as { path: string }).path = originPath;
+                  await get().relinkTrack(tr.id, file);
+                }
+              } catch (err) {
+                console.warn(`No se pudo auto-recargar pista ${tr.name} desde ${originPath}:`, err);
+              }
+            }
+          }
+        }, 50);
+      }
     },
 
     getProjectData(): DawProject {
@@ -1074,9 +1134,10 @@ export const useDaw = create<DawState>()((set, get) => {
         return song;
       });
 
-      const serializedSongs = currentSongs.map((song) => ({
+      const serializedSongs = currentSongs.map((song, idx) => ({
         id: song.id,
         name: song.name,
+        color: song.color || getSongColor(song, idx),
         tracks: song.tracks.map((t) => ({
           id: t.id,
           name: t.name,
@@ -1096,8 +1157,10 @@ export const useDaw = create<DawState>()((set, get) => {
           fadeIn: t.fadeIn,
           fadeOut: t.fadeOut,
           pitchLocked: t.pitchLocked ?? false,
+          filePath: t.filePath || t.fileMeta?.path,
           fileInfo: {
             name: t.fileMeta?.name || `${t.name}.wav`,
+            path: t.filePath || t.fileMeta?.path,
             size: t.fileMeta?.size,
             type: t.fileMeta?.type,
             lastModified: t.fileMeta?.lastModified,
@@ -1138,8 +1201,10 @@ export const useDaw = create<DawState>()((set, get) => {
         fadeIn: t.fadeIn,
         fadeOut: t.fadeOut,
         pitchLocked: t.pitchLocked ?? false,
+        filePath: t.filePath || t.fileMeta?.path,
         fileInfo: {
           name: t.fileMeta?.name || `${t.name}.wav`,
+          path: t.filePath || t.fileMeta?.path,
           size: t.fileMeta?.size,
           type: t.fileMeta?.type,
           lastModified: t.fileMeta?.lastModified,
