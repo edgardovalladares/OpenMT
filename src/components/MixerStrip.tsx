@@ -1,5 +1,5 @@
 import { useState, useRef, type CSSProperties } from 'react';
-import { AlertTriangle, Scissors, Lock, Unlock, X } from 'lucide-react';
+import { AlertTriangle, Scissors, Lock, Unlock, X, Loader2 } from 'lucide-react';
 import { useDaw, type TrackState } from '../store/useDaw';
 import { engine } from '../audio/engine';
 import { formatDb, posToDb } from '../audio/dbMath';
@@ -96,6 +96,11 @@ export function TrackInfo({ t }: { t: TrackState }) {
                 }}
               />
             </>
+          ) : t.status === 'loading' ? (
+            <span className="chip chip--loading" title="Cargando y decodificando audio...">
+              <Loader2 size={10} className="spin" style={{ marginRight: 3, verticalAlign: -1 }} />
+              Cargando…
+            </span>
           ) : (
             <span className="chip chip--data" title={data}>{data}</span>
           )}

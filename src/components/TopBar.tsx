@@ -140,11 +140,8 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
         </div>
       </section>
 
-      {/* Panel Repertorio / Setlist de Canciones (Grid 3x3) */}
-      <section className="panel panel--setlist" aria-label="Repertorio en Vivo (Grid 3x3)">
-        <span className="panel__label">SETLIST / REPERTORIO (GRID 3x3)</span>
-        <SongCards />
-      </section>
+      {/* Panel Repertorio / Setlist de Canciones (Alineado con Letras) */}
+      <SongCards />
 
       {/* Indicador visible cuando una sección está en cola para saltar */}
       {queuedSec && (

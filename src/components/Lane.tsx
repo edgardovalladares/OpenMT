@@ -1,8 +1,42 @@
 import { useEffect, useRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { engine } from '../audio/engine';
 import { drawWaveform } from '../audio/peaks';
 import { useDaw, type TrackState } from '../store/useDaw';
+
+const SKELETON_BARS = [
+  25, 45, 70, 30, 85, 60, 40, 95, 55, 75, 30, 65, 80, 50, 90, 40, 65, 85, 55, 35,
+  70, 90, 45, 75, 60, 30, 85, 95, 50, 40, 65, 80, 55, 35, 70, 90, 60, 40, 80, 95,
+  65, 50, 35, 75, 85, 40, 60, 90, 55, 30, 65, 80, 45, 70, 85, 60, 40, 75, 90, 50
+];
+
+function LaneSkeleton({ colorIndex }: { colorIndex: number }) {
+  return (
+    <div
+      className="lane-skeleton"
+      style={{ ['--track-color' as string]: `var(--track-${colorIndex})` }}
+      aria-label="Cargando y decodificando audio"
+    >
+      <div className="lane-skeleton__bars" aria-hidden="true">
+        {SKELETON_BARS.map((heightPct, idx) => (
+          <div
+            key={idx}
+            className="lane-skeleton__bar"
+            style={{
+              height: `${heightPct}%`,
+              animationDelay: `${(idx % 12) * 0.08}s`,
+            }}
+          />
+        ))}
+      </div>
+      <div className="lane-skeleton__shimmer" aria-hidden="true" />
+      <div className="lane-skeleton__badge">
+        <Loader2 size={13} className="lane-skeleton__spinner" />
+        <span>Decodificando audio…</span>
+      </div>
+    </div>
+  );
+}
 
 export function Lane({ track, duration }: { track: TrackState; duration: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -141,8 +175,8 @@ export function Lane({ track, duration }: { track: TrackState; duration: number 
         engine.seek(((e.clientX - r.left) / r.width) * duration);
       }}
     >
-      <canvas ref={ref} />
-      {track.status === 'loading' && <span className="lane__msg">Decodificando…</span>}
+      <canvas ref={ref} style={{ display: track.status === 'loading' ? 'none' : 'block' }} />
+      {track.status === 'loading' && <LaneSkeleton colorIndex={track.colorIndex} />}
       {track.status === 'error' && <span className="lane__msg lane__msg--err">{track.error}</span>}
       {track.status === 'missing' && (
         <div className="lane__missing">

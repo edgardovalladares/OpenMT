@@ -118,6 +118,8 @@ export interface DawState {
 
   // Secciones y Bucles
   sections: SongSection[];
+  sectionsHeight: number;
+  setSectionsHeight(h: number): void;
   activeSectionId: string | null;
   loopSectionId: string | null;
   queuedSectionId: string | null;
@@ -553,6 +555,14 @@ export const useDaw = create<DawState>()((set, get) => {
 
     // Secciones
     sections: [],
+    sectionsHeight: typeof window !== 'undefined' ? (Number(localStorage.getItem('openmt_sections_h')) || 32) : 32,
+    setSectionsHeight: (h) => {
+      const clamped = Math.max(26, Math.min(90, Math.round(h)));
+      try {
+        localStorage.setItem('openmt_sections_h', String(clamped));
+      } catch {}
+      set({ sectionsHeight: clamped });
+    },
     activeSectionId: null,
     loopSectionId: null,
     queuedSectionId: null,
@@ -726,22 +736,29 @@ export const useDaw = create<DawState>()((set, get) => {
       pushUndo();
       const targetSongId = get().activeSongId;
       engine.setActiveSongId(targetSongId);
-      for (const file of files) {
-        // Verificar que la canción a la que se agregaron las pistas aún exista
-        const currentSongs = get().songs;
-        const targetSong = currentSongs.find((s) => s.id === targetSongId);
-        if (!targetSong) break;
 
-        const isCurrentActive = get().activeSongId === targetSongId;
-        const targetTracks = isCurrentActive ? get().tracks : targetSong.tracks;
-        if (targetTracks.length >= MAX_TRACKS) break;
+      const currentSongs = get().songs;
+      const targetSong = currentSongs.find((s) => s.id === targetSongId);
+      if (!targetSong) return;
 
+      const isCurrentActive = get().activeSongId === targetSongId;
+      const currentTracks = isCurrentActive ? get().tracks : targetSong.tracks;
+      const availableSlots = Math.max(0, MAX_TRACKS - currentTracks.length);
+      const filesToAdd = files.slice(0, availableSlots);
+      if (filesToAdd.length === 0) return;
+
+      // 1. Crear esqueletos (skeletons) inmediatamente para respuesta visual instantánea
+      const newPlaceholders: { id: string; file: File; track: TrackState }[] = [];
+      const usedColors = new Set(currentTracks.map((t) => t.colorIndex));
+      const colorPalette = Array.from({ length: MAX_TRACKS }, (_, i) => i);
+
+      for (let i = 0; i < filesToAdd.length; i++) {
+        const file = filesToAdd[i];
         const id = crypto.randomUUID();
-        const used = new Set(targetTracks.map((t) => t.colorIndex));
-        const colorPalette = Array.from({ length: MAX_TRACKS }, (_, i) => i);
-        const colorIndex = colorPalette.find((i) => !used.has(i)) ?? (targetTracks.length % MAX_TRACKS);
-        const isRhythmicOrGuide = /drum|bater[ií]a|perc|click|claqueta|metr[oó]nomo|hi-?hat|snare|kick|caja|bombo|shaker|pandereta|tambor|gui[aá]|gu[ií]de/i.test(file.name);
+        const colorIndex = colorPalette.find((c) => !usedColors.has(c)) ?? ((currentTracks.length + i) % MAX_TRACKS);
+        usedColors.add(colorIndex);
 
+        const isRhythmicOrGuide = /drum|bater[ií]a|perc|click|claqueta|metr[oó]nomo|hi-?hat|snare|kick|caja|bombo|shaker|pandereta|tambor|gui[aá]|gu[ií]de/i.test(file.name);
         const detectedPath = (file as any).path || (file as any).filePath || undefined;
 
         const newTrack: TrackState = {
@@ -776,35 +793,40 @@ export const useDaw = create<DawState>()((set, get) => {
           },
         };
 
-        // Agregar la pista específicamente a la canción destino
-        set((s) => {
-          const isActive = s.activeSongId === targetSongId;
-          const nextTracks = isActive ? [...s.tracks, newTrack] : s.tracks;
-          const nextSongs = s.songs.map((song) => {
-            if (song.id === targetSongId) {
-              const updatedTracks = isActive ? nextTracks : [...song.tracks, newTrack];
-              return {
-                ...song,
-                tracks: updatedTracks,
-                refTrackId: song.refTrackId ?? id,
-              };
-            }
-            return song;
-          });
-          return {
-            tracks: nextTracks,
-            songs: nextSongs,
-            refTrackId: isActive ? (s.refTrackId ?? id) : s.refTrackId,
-          };
-        });
+        newPlaceholders.push({ id, file, track: newTrack });
+      }
 
+      // 2. Insertar todos los esqueletos en el store de inmediato en una sola actualización
+      const newTrackList = newPlaceholders.map((p) => p.track);
+      set((s) => {
+        const isActive = s.activeSongId === targetSongId;
+        const nextTracks = isActive ? [...s.tracks, ...newTrackList] : s.tracks;
+        const nextSongs = s.songs.map((song) => {
+          if (song.id === targetSongId) {
+            return {
+              ...song,
+              tracks: isActive ? nextTracks : [...song.tracks, ...newTrackList],
+              refTrackId: song.refTrackId ?? newPlaceholders[0]?.id ?? null,
+            };
+          }
+          return song;
+        });
+        return {
+          tracks: nextTracks,
+          songs: nextSongs,
+          refTrackId: isActive ? (s.refTrackId ?? newPlaceholders[0]?.id ?? null) : s.refTrackId,
+        };
+      });
+
+      // 3. Decodificar archivos en el motor de audio y actualizar progresivamente a 'ready'
+      for (const item of newPlaceholders) {
         try {
           const info = await engine.addTrack(
-            id,
-            file,
+            item.id,
+            item.file,
             () => get().activeSongId === targetSongId,
           );
-          patchTrackInSong(targetSongId, id, {
+          patchTrackInSong(targetSongId, item.id, {
             status: 'ready',
             duration: info.duration,
             peaks: info.peaks,
@@ -812,7 +834,7 @@ export const useDaw = create<DawState>()((set, get) => {
           });
           analyze(info.analysisInput, ANALYSIS_SR)
             .then((r) =>
-              patchTrackInSong(targetSongId, id, {
+              patchTrackInSong(targetSongId, item.id, {
                 analysis: 'done',
                 bpm: r.bpm?.bpm ?? null,
                 bpmConfidence: r.bpm?.confidence ?? 0,
@@ -820,9 +842,9 @@ export const useDaw = create<DawState>()((set, get) => {
                 keyConfidence: r.key?.confidence ?? 0,
               }),
             )
-            .catch(() => patchTrackInSong(targetSongId, id, { analysis: 'error' }));
+            .catch(() => patchTrackInSong(targetSongId, item.id, { analysis: 'error' }));
         } catch (e) {
-          patchTrackInSong(targetSongId, id, {
+          patchTrackInSong(targetSongId, item.id, {
             status: 'error',
             analysis: 'error',
             error: e instanceof Error ? e.message : 'No se pudo decodificar el archivo',
