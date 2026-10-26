@@ -194,17 +194,32 @@ export function LyricsModal({ isOpen, onClose }: Props) {
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
 
+  const generateLanObsUrl = () => {
+    const origin = isDesktop ? currentHost : window.location.origin;
+    const pathname = window.location.pathname;
+    const searchParams = new URLSearchParams({
+      view: 'lyrics',
+      room: roomCode,
+      theme: options.theme,
+      mode: options.mode,
+      fontSize: options.fontSize,
+      uppercase: String(options.uppercase),
+      showNext: String(options.showNext),
+    });
+    return `${origin}${pathname}?${searchParams.toString()}`;
+  };
+
   const generateLanPrompterUrl = () => {
     const origin = isDesktop ? currentHost : window.location.origin;
     const pathname = window.location.pathname;
     const searchParams = new URLSearchParams({
       view: 'lyrics',
       room: roomCode,
-      theme: 'dark',
+      theme: options.theme === 'transparent' ? 'dark' : options.theme,
       mode: 'prompter',
-      fontSize: 'large',
+      fontSize: options.fontSize,
       uppercase: String(options.uppercase),
-      showNext: 'true',
+      showNext: String(options.showNext),
     });
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
@@ -226,7 +241,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   const buildLyricsUrl = (target: 'mobile-prompter' | 'obs' | 'remote') => {
     if (target === 'mobile-prompter') return generateLanPrompterUrl();
-    if (target === 'obs') return generateLocalObsUrl();
+    if (target === 'obs') return isDesktop ? generateLanObsUrl() : generateLocalObsUrl();
     return generateRemoteUrl();
   };
 

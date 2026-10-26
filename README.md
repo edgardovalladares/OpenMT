@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v3.2.0-blue" alt="Version 3.2.0" />
+  <img src="https://img.shields.io/badge/version-v3.2.1-blue" alt="Version 3.2.1" />
   <img src="https://img.shields.io/badge/Tauri-2.0-orange?logo=tauri" alt="Tauri 2.0" />
   <img src="https://img.shields.io/badge/Rust-1.80+-black?logo=rust" alt="Rust" />
   <img src="https://img.shields.io/badge/Audio%20Engine-CPAL%20%2B%20Symphonia-red" alt="CPAL + Symphonia" />
@@ -22,13 +22,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.0/OpenMT_3.2.0_x64-setup.exe">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.1/OpenMT_3.2.1_x64-setup.exe">
     <img src="https://img.shields.io/badge/Descargar-Instalador%20Windows%20(.exe)-2ea44f?style=for-the-badge&logo=windows" alt="Descargar Instalador Windows" />
   </a>
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.0/OpenMT_3.2.0_x64_Portable.exe">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.1/OpenMT_3.2.1_x64_Portable.exe">
     <img src="https://img.shields.io/badge/Descargar-Versi%C3%B3n%20Portable%20(.exe)-0969da?style=for-the-badge&logo=windows" alt="Descargar Portable Windows" />
   </a>
-  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.0/OpenMT_3.2.0_x64_en-US.msi">
+  <a href="https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.1/OpenMT_3.2.1_x64_en-US.msi">
     <img src="https://img.shields.io/badge/Descargar-Instalador%20MSI%20(.msi)-5c5c5c?style=for-the-badge&logo=windows" alt="Descargar MSI Windows" />
   </a>
 </p>
@@ -38,7 +38,7 @@
 ## 📖 Tabla de Contenidos
 
 1. [Acerca de OpenMT](#-acerca-de-openmt)
-2. [Novedades de la Versión 3.2.0](#-novedades-de-la-versión-320)
+2. [Novedades de la Versión 3.2.1](#-novedades-de-la-versión-321)
 3. [Descargas y Versiones Oficiales](#-descargas-y-versiones-oficiales)
 4. [Características Principales](#-características-principales)
    - [Motor Nativo de Audio Multihilo (Rust)](#-1-motor-nativo-de-audio-multihilo-rust--cpal--symphonia)
@@ -74,33 +74,40 @@
 
 ---
 
+## ⚡ Novedades de la Versión 3.2.1
+
+La versión 3.2.1 perfecciona la salida limpia de letras en vivo y la sincronización fidedigna de estilos en tiempo real:
+
+- **Salida Limpia para OBS Studio y Pantallas de Proyección:**
+  - Eliminación total de encabezados, títulos de proyecto y badges de estado (`"LAN WiFi en vivo"`, `"OpenMT Live"`) en las vistas de letras para transmisión y proyección.
+  - En modo transparente (`transparent`), fondo 100% libre de bordes, placas o tarjetas de espera residuales para superponer limpiamente sobre cámaras y transmisiones de video.
+- **Sincronización Dinámica de Estilos en Tiempo Real:**
+  - Aplicación estricta de las opciones activas configuradas por el usuario: Temas (`transparent`, `dark`, `black`, `chroma-green`), Modos (`lowerthird`, `fullscreen`, `prompter`), Tamaños de fuente (`normal`, `large`, `xlarge`), Mayúsculas y Ocultar siguiente línea.
+  - El servidor LAN autónomo actualiza instantáneamente en caliente las pantallas remotas, tablets y fuentes de navegador de OBS en cuanto el usuario ajusta el diseño en OpenMT, sin necesidad de recargar.
+  - Corrección de enlaces y códigos QR en red local Wi-Fi para direccionamiento inmediato a la IP del equipo anfitrión.
+  - Persistencia de opciones de diseño de letras en almacenamiento local.
+
+---
+
 ## ⚡ Novedades de la Versión 3.2.0
 
-La versión 3.2.0 introduce mejoras clave en experiencia visual, edición interactiva y organización del espacio de trabajo:
+La versión 3.2.0 introdujo mejoras clave en experiencia visual, edición interactiva y organización del espacio de trabajo:
 
-- **Esqueleto y Precargador Animado de Pistas (Track Skeletons):**
-  - Inserción por lotes instantánea en 0 ms al soltar o añadir pistas de audio.
-  - Visualización inmediata de la silueta de forma de onda con barras animadas y barrido de brillo (*gradient shimmer*), eliminando cualquier sensación de lentitud o congelamiento durante la decodificación.
-- **Secciones Musicales con Altura, Anchura y Posición Editables:**
-  - **Ajuste de Anchura y Duración:** Tiradores en los bordes izquierdo y derecho de cada sección para ajustar interactivamente los puntos de inicio y fin sobre la línea de tiempo.
-  - **Desplazamiento de Posición en el Tiempo:** Arrastre libre del cuerpo de la sección a lo largo del timeline preservando su duración exacta.
-  - **Altura de Secciones Personalizable:** Tirador interactivo para graduar la altura de las secciones entre 26px y 90px con guardado persistente automático.
-- **Reorganización No Invasiva del Setlist (Siempre Arriba junto a Letras):**
-  - El panel de Setlist / Repertorio se mantiene estrictamente en la barra superior en una sola fila continua junto a **LETRAS**, sin saltar abajo ni invadir la línea de tiempo ni los canales de mezcla.
-  - Fila horizontal compacta con desplazamiento suave por rueda de ratón y anchura ajustable con tirador lateral.
-  - Modal bajo demanda con buscador en vivo y cuadrícula de tarjetas de color para gestionar repertorios extensos sin sobrecargar la pantalla principal.
+- **Esqueleto y Precargador Animado de Pistas (Track Skeletons):** Inserción por lotes instantánea en 0 ms con silueta animada.
+- **Secciones Musicales con Altura, Anchura y Posición Editables:** Tiradores para duración, movimiento temporal y altura graduable (26px a 90px).
+- **Reorganización del Setlist (Arriba junto a Letras):** Fila horizontal compacta con desplazamiento suave y modal bajo demanda.
 
 ---
 
 ## 📦 Descargas y Versiones Oficiales
 
-Puedes descargar los paquetes oficiales directamente desde la sección de **[Releases de GitHub (v3.2.0)](https://github.com/edgardovalladares/OpenMT/releases/tag/v3.2.0)**:
+Puedes descargar los paquetes oficiales directamente desde la sección de **[Releases de GitHub (v3.2.1)](https://github.com/edgardovalladares/OpenMT/releases/tag/v3.2.1)**:
 
 | Paquete | Archivo | Tamaño | Descripción |
 | :--- | :--- | :---: | :--- |
-| **Instalador Windows** | [`OpenMT_3.2.0_x64-setup.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.0/OpenMT_3.2.0_x64-setup.exe) | ~375 MB | **Recomendado:** Instalador con asistente NSIS, accesos directos en inicio/escritorio y desinstalador limpio. |
-| **Versión Portable** | [`OpenMT_3.2.0_x64_Portable.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.0/OpenMT_3.2.0_x64_Portable.exe) | ~378 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
-| **Instalador MSI** | [`OpenMT_3.2.0_x64_en-US.msi`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.0/OpenMT_3.2.0_x64_en-US.msi) | ~372 MB | Paquete Windows Installer MSI estándar para instalaciones corporativas o despliegues automatizados. |
+| **Instalador Windows** | [`OpenMT_3.2.1_x64-setup.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.1/OpenMT_3.2.1_x64-setup.exe) | ~375 MB | **Recomendado:** Instalador con asistente NSIS, accesos directos en inicio/escritorio y desinstalador limpio. |
+| **Versión Portable** | [`OpenMT_3.2.1_x64_Portable.exe`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.1/OpenMT_3.2.1_x64_Portable.exe) | ~378 MB | Ejecutable independiente de un solo clic. No requiere instalación ni permisos de administrador (ideal para llevar en memoria USB). |
+| **Instalador MSI** | [`OpenMT_3.2.1_x64_en-US.msi`](https://github.com/edgardovalladares/OpenMT/releases/download/v3.2.1/OpenMT_3.2.1_x64_en-US.msi) | ~372 MB | Paquete Windows Installer MSI estándar para instalaciones corporativas o despliegues automatizados. |
 
 ---
 

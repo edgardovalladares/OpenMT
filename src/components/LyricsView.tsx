@@ -265,9 +265,8 @@ export function LyricsView() {
       {lines.length === 0 ? (
         theme !== 'transparent' ? (
           <div className="lyrics-empty">
-            <div className="lyrics-empty__card">
-              <h3>Visor de Letras OpenMT</h3>
-              <p>Esperando letra desde la ventana de OpenMT…</p>
+            <div className="lyrics-empty__card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+              <p style={{ margin: 0, opacity: 0.45, fontStyle: 'italic', fontSize: '1rem' }}>Esperando letra…</p>
             </div>
           </div>
         ) : null

@@ -520,13 +520,21 @@ export const useDaw = create<DawState>()((set, get) => {
 
     // Letras sincronizadas
     lyrics: { rawLrc: '', offsetMs: 350 },
-    lyricsOptions: {
-      theme: 'transparent',
-      mode: 'lowerthird',
-      fontSize: 'large',
-      uppercase: false,
-      showNext: true,
-    },
+    lyricsOptions: (() => {
+      const fallback: LyricsDisplayOptions = {
+        theme: 'transparent',
+        mode: 'lowerthird',
+        fontSize: 'large',
+        uppercase: false,
+        showNext: true,
+      };
+      if (typeof window === 'undefined') return fallback;
+      try {
+        const raw = localStorage.getItem('openmt_lyrics_options');
+        if (raw) return { ...fallback, ...JSON.parse(raw) };
+      } catch {}
+      return fallback;
+    })(),
     setLyrics: (rawLrc, offsetMs = 350) => {
       set({ lyrics: { rawLrc, offsetMs } });
       const s = get();
@@ -540,6 +548,9 @@ export const useDaw = create<DawState>()((set, get) => {
     setLyricsOptions: (partial) => {
       const s = get();
       const updated = { ...s.lyricsOptions, ...partial };
+      try {
+        localStorage.setItem('openmt_lyrics_options', JSON.stringify(updated));
+      } catch {}
       set({ lyricsOptions: updated });
       broadcastLyricsUpdate(s.lyrics.rawLrc, s.lyrics.offsetMs, s.projectName, updated);
     },

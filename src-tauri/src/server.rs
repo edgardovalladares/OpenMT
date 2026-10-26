@@ -404,95 +404,269 @@ impl LanServer {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>OpenMT Prompter LAN</title>
+  <title>OpenMT Lyrics</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: #0b0d10;
-      color: #ffffff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      overflow: hidden;
+    html, body {
+      width: 100vw;
       height: 100vh;
-      display: flex;
-      flex-direction: column;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Figtree', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    .header {
-      padding: 10px 16px;
-      background: #141820;
-      border-bottom: 1px solid #232a36;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 13px;
+
+    /* Temas de Fondo */
+    body.theme-transparent, html.theme-transparent {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #ffffff;
     }
-    .song-title { font-weight: 700; color: #ff7a2f; }
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      padding: 2px 8px;
+    body.theme-dark, html.theme-dark {
+      background: #0b0d10 !important;
+      background-color: #0b0d10 !important;
+      color: #f0f3f6;
+    }
+    body.theme-black, html.theme-black {
+      background: #000000 !important;
+      background-color: #000000 !important;
+      color: #ffffff;
+    }
+    body.theme-chroma-green, html.theme-chroma-green {
+      background: #00ff00 !important;
+      background-color: #00ff00 !important;
+      color: #ffffff;
+    }
+
+    /* Contenedor Principal (Escenario) */
+    .stage {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* MODO: Tercio Inferior (OBS Studio y Video) */
+    .stage.mode-lowerthird {
+      align-items: flex-end;
+      justify-content: center;
+      padding: 24px 32px 42px;
+      pointer-events: none;
+    }
+    .stage.mode-lowerthird .plate {
+      max-width: 1300px;
+      width: 100%;
+      text-align: center;
+      padding: 14px 28px;
+      background: rgba(10, 12, 16, 0.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 12px;
-      background: rgba(34, 197, 94, 0.15);
-      color: #22c55e;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      transition: opacity 0.2s ease;
     }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
-    .prompter-box {
-      flex: 1;
-      overflow-y: auto;
-      padding: 40px 20px;
-      display: flex;
-      flex-direction: column;
+    body.theme-transparent .plate,
+    .stage.theme-transparent .plate {
+      background: transparent !important;
+      background-color: transparent !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* MODO: Pantalla Completa (Proyectores / Auditorios) */
+    .stage.mode-fullscreen {
       align-items: center;
       justify-content: center;
       text-align: center;
+      padding: 40px;
     }
+    .stage.mode-fullscreen .plate {
+      max-width: 1400px;
+      width: 100%;
+    }
+
+    /* MODO: Teleprompter (Scroll continuo para músicos) */
+    .stage.mode-prompter {
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 24px;
+    }
+    .stage.mode-prompter::-webkit-scrollbar { display: none; }
+    .prompter-spacer {
+      height: 42vh;
+      flex: none;
+    }
+    .prompter-line {
+      padding: 14px 24px;
+      max-width: 1100px;
+      text-align: center;
+      font-weight: 600;
+      line-height: 1.4;
+      opacity: 0.35;
+      transition: all 0.25s ease;
+      border-radius: 8px;
+    }
+    .prompter-line.current {
+      opacity: 1 !important;
+      font-weight: 800 !important;
+      color: #fff !important;
+      transform: scale(1.06);
+      text-shadow: 0 0 24px rgba(255, 122, 47, 0.6), 0 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(255, 122, 47, 0.15);
+      border: 1px solid rgba(255, 122, 47, 0.3);
+    }
+    .prompter-line.past {
+      opacity: 0.22;
+    }
+
+    /* Líneas en Lowerthird y Fullscreen */
     .current-line {
-      font-size: clamp(28px, 6vw, 56px);
       font-weight: 800;
       line-height: 1.25;
       color: #ffffff;
-      text-shadow: 0 2px 16px rgba(0,0,0,0.8);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 18px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 0, 0, 0.6);
+      letter-spacing: 0.01em;
       transition: all 0.15s ease;
-      margin-bottom: 18px;
-      max-width: 900px;
     }
     .next-line {
-      font-size: clamp(18px, 3.8vw, 32px);
       font-weight: 500;
+      opacity: 0.72;
+      margin-top: 8px;
       line-height: 1.3;
-      color: rgba(255, 255, 255, 0.55);
-      max-width: 800px;
+      color: #e0e5eb;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+      transition: all 0.15s ease;
     }
-    .empty-state {
-      color: #64748b;
-      font-size: 16px;
+    body.theme-transparent .current-line,
+    .stage.theme-transparent .current-line {
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 0, 0, 0.85);
+    }
+    body.theme-transparent .next-line,
+    .stage.theme-transparent .next-line {
+      color: #e5e9f0;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.85);
+    }
+
+    /* Tamaños de Fuente */
+    .stage.font-normal .current-line {
+      font-size: clamp(20px, 3.2vw, 32px);
+    }
+    .stage.font-normal .next-line {
+      font-size: clamp(14px, 2.2vw, 22px);
+    }
+    .stage.font-normal .prompter-line {
+      font-size: clamp(18px, 2.8vw, 28px);
+    }
+
+    .stage.font-large .current-line {
+      font-size: clamp(26px, 4.2vw, 44px);
+    }
+    .stage.font-large .next-line {
+      font-size: clamp(18px, 2.8vw, 28px);
+    }
+    .stage.font-large .prompter-line {
+      font-size: clamp(24px, 3.6vw, 38px);
+    }
+
+    .stage.font-xlarge .current-line {
+      font-size: clamp(34px, 5.5vw, 62px);
+    }
+    .stage.font-xlarge .next-line {
+      font-size: clamp(22px, 3.5vw, 36px);
+    }
+    .stage.font-xlarge .prompter-line {
+      font-size: clamp(30px, 4.5vw, 48px);
+    }
+
+    /* Opciones: Mayúsculas */
+    .stage.is-uppercase .current-line,
+    .stage.is-uppercase .next-line,
+    .stage.is-uppercase .prompter-line {
+      text-transform: uppercase;
+    }
+
+    /* Opciones: Ocultar Siguiente */
+    .stage.hide-next .next-line {
+      display: none !important;
+    }
+
+    .empty-placeholder {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.38);
       font-style: italic;
+      text-align: center;
+    }
+    body.theme-transparent .empty-placeholder,
+    .stage.theme-transparent .empty-placeholder {
+      display: none !important;
     }
   </style>
 </head>
-<body>
-  <div class="header">
-    <div class="song-title" id="songName">OpenMT Live</div>
-    <div class="status-badge"><span class="status-dot"></span><span id="connStatus">LAN WiFi Conectado</span></div>
+<body class="theme-transparent">
+  <div id="stage" class="stage theme-transparent mode-lowerthird font-large" title="Doble clic o tecla F para pantalla completa">
+    <div id="nonPrompterPlate" class="plate" style="display: none;">
+      <div id="curLine" class="current-line"></div>
+      <div id="nextLine" class="next-line"></div>
+    </div>
+    <div id="prompterContainer" style="display: none; width: 100%;">
+      <div class="prompter-spacer"></div>
+      <div id="prompterLines" style="display: flex; flex-direction: column; align-items: center; width: 100%;"></div>
+      <div class="prompter-spacer"></div>
+    </div>
+    <div id="emptyNote" class="empty-placeholder" style="display: none; margin: auto;">Esperando letra...</div>
   </div>
-  <div class="prompter-box" id="prompter">
-    <div class="current-line" id="curLine">Esperando reproducción...</div>
-    <div class="next-line" id="nextLine"></div>
-  </div>
+
   <script>
+    const params = new URLSearchParams(window.location.search);
+    let options = {
+      theme: params.get('theme') || 'transparent',
+      mode: params.get('mode') || 'lowerthird',
+      fontSize: params.get('fontSize') || 'large',
+      uppercase: params.has('uppercase') ? params.get('uppercase') === 'true' : false,
+      showNext: params.has('showNext') ? params.get('showNext') !== 'false' : true,
+    };
+
     let rawLrc = "";
     let parsedLines = [];
     let offsetMs = 350;
     let position = 0;
+    let lastRenderedIdx = -999;
+    let lastRenderedLrc = "";
+
+    const stageEl = document.getElementById('stage');
+    const plateEl = document.getElementById('nonPrompterPlate');
+    const curLineEl = document.getElementById('curLine');
+    const nextLineEl = document.getElementById('nextLine');
+    const prompterContainerEl = document.getElementById('prompterContainer');
+    const prompterLinesEl = document.getElementById('prompterLines');
+    const emptyNoteEl = document.getElementById('emptyNote');
+
+    function applyClasses() {
+      document.body.className = 'theme-' + options.theme;
+      stageEl.className = 'stage theme-' + options.theme +
+        ' mode-' + options.mode +
+        ' font-' + options.fontSize +
+        (options.uppercase ? ' is-uppercase' : '') +
+        (!options.showNext ? ' hide-next' : '');
+    }
+    applyClasses();
 
     function parseLrc(text) {
       if (!text) return [];
       const lines = text.split('\n');
       const timeRegex = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
       const result = [];
-      for (const line of lines) {
-        const trimmed = line.trim();
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (!trimmed) continue;
         let match;
         timeRegex.lastIndex = 0;
         const matches = [];
@@ -501,81 +675,149 @@ impl LanServer {
         }
         if (matches.length > 0) {
           const textOnly = trimmed.replace(timeRegex, '').trim();
-          for (const m of matches) {
+          for (let k = 0; k < matches.length; k++) {
+            const m = matches[k];
             const min = parseInt(m[1], 10);
             const sec = parseInt(m[2], 10);
             const frac = m[3] ? parseFloat('0.' + m[3]) : 0;
-            result.push({ time: min * 60 + sec + frac, text: textOnly });
+            result.push({ time: min * 60 + sec + frac, text: textOnly, id: i });
           }
         }
       }
       return result.sort((a, b) => a.time - b.time);
     }
 
+    function rebuildPrompterDOM() {
+      prompterLinesEl.innerHTML = '';
+      for (let i = 0; i < parsedLines.length; i++) {
+        const div = document.createElement('div');
+        div.className = 'prompter-line';
+        div.id = 'p-line-' + i;
+        div.textContent = parsedLines[i].text || '♪ Instrumental ♪';
+        prompterLinesEl.appendChild(div);
+      }
+    }
+
     function updateDisplay() {
       if (parsedLines.length === 0) {
-        document.getElementById('curLine').textContent = "Esperando reproducción...";
-        document.getElementById('nextLine').textContent = "";
+        plateEl.style.display = 'none';
+        prompterContainerEl.style.display = 'none';
+        if (options.theme !== 'transparent') {
+          emptyNoteEl.style.display = 'block';
+        } else {
+          emptyNoteEl.style.display = 'none';
+        }
         return;
       }
+      emptyNoteEl.style.display = 'none';
+
       const adjPos = Math.max(0, position - (offsetMs / 1000));
-      let idx = -1;
+      let activeIdx = -1;
       for (let i = 0; i < parsedLines.length; i++) {
         if (parsedLines[i].time <= adjPos) {
-          idx = i;
+          activeIdx = i;
         } else {
           break;
         }
       }
-      if (idx >= 0 && idx < parsedLines.length) {
-        document.getElementById('curLine').textContent = parsedLines[idx].text || "♪ ♪ ♪";
-        if (idx + 1 < parsedLines.length) {
-          document.getElementById('nextLine').textContent = parsedLines[idx + 1].text || "";
-        } else {
-          document.getElementById('nextLine').textContent = "";
+
+      if (options.mode === 'prompter') {
+        plateEl.style.display = 'none';
+        prompterContainerEl.style.display = 'block';
+
+        if (rawLrc !== lastRenderedLrc) {
+          rebuildPrompterDOM();
+          lastRenderedLrc = rawLrc;
+        }
+
+        if (activeIdx !== lastRenderedIdx) {
+          lastRenderedIdx = activeIdx;
+          const allLines = prompterLinesEl.children;
+          for (let i = 0; i < allLines.length; i++) {
+            if (i === activeIdx) {
+              allLines[i].className = 'prompter-line current';
+              allLines[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (i < activeIdx) {
+              allLines[i].className = 'prompter-line past';
+            } else {
+              allLines[i].className = 'prompter-line';
+            }
+          }
         }
       } else {
-        document.getElementById('curLine').textContent = "♪ ♪ ♪";
-        document.getElementById('nextLine').textContent = parsedLines[0]?.text || "";
+        prompterContainerEl.style.display = 'none';
+        const curLine = (activeIdx >= 0 && activeIdx < parsedLines.length) ? parsedLines[activeIdx] : null;
+        const nextLine = (activeIdx + 1 < parsedLines.length) ? parsedLines[activeIdx + 1] : null;
+
+        const hasText = curLine && curLine.text;
+        const hasNext = options.showNext && nextLine && nextLine.text;
+
+        if (!curLine && !hasNext) {
+          plateEl.style.display = 'none';
+          return;
+        }
+
+        plateEl.style.display = 'block';
+        curLineEl.textContent = curLine ? (curLine.text || '♪ Instrumental ♪') : '';
+        nextLineEl.textContent = (options.showNext && nextLine) ? (nextLine.text || '') : '';
       }
     }
 
     function applyData(data) {
       if (!data) return;
-      if (data.projectName) document.getElementById('songName').textContent = data.projectName;
+      if (data.options) {
+        if (data.options.theme && !params.has('theme')) options.theme = data.options.theme;
+        if (data.options.mode && !params.has('mode')) options.mode = data.options.mode;
+        if (data.options.fontSize && !params.has('fontSize')) options.fontSize = data.options.fontSize;
+        if (data.options.uppercase !== undefined && !params.has('uppercase')) options.uppercase = data.options.uppercase;
+        if (data.options.showNext !== undefined && !params.has('showNext')) options.showNext = data.options.showNext;
+        applyClasses();
+      }
       if (data.rawLrc !== undefined && data.rawLrc !== rawLrc) {
         rawLrc = data.rawLrc;
         parsedLines = parseLrc(rawLrc);
+        lastRenderedLrc = "";
+        lastRenderedIdx = -999;
       }
       if (data.offsetMs !== undefined) offsetMs = data.offsetMs;
       if (data.position !== undefined) position = data.position;
       updateDisplay();
     }
 
-    // Server-Sent Events
     function connectSSE() {
       const sse = new EventSource('/api/lyrics/events');
       sse.onmessage = (e) => {
         try {
           applyData(JSON.parse(e.data));
-          document.getElementById('connStatus').textContent = 'LAN WiFi En Vivo';
         } catch {}
       };
       sse.onerror = () => {
-        document.getElementById('connStatus').textContent = 'Reconectando...';
         sse.close();
         setTimeout(connectSSE, 2000);
       };
     }
     connectSSE();
 
-    // Polling respaldo
+    // Polling de respaldo
     setInterval(() => {
       fetch('/api/lyrics/sync')
         .then(r => r.json())
         .then(d => applyData(d))
         .catch(() => {});
-    }, 250);
+    }, 200);
+
+    // Alternar Pantalla Completa
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+    window.addEventListener('dblclick', toggleFullscreen);
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'f') toggleFullscreen();
+    });
   </script>
 </body>
 </html>"#
