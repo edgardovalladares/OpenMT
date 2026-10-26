@@ -18,13 +18,13 @@ function LaneSkeleton({ colorIndex }: { colorIndex: number }) {
       aria-label="Cargando y decodificando audio"
     >
       <div className="lane-skeleton__bars" aria-hidden="true">
-        {SKELETON_BARS.map((heightPct, idx) => (
+        {Array.from({ length: 240 }).map((_, idx) => (
           <div
             key={idx}
             className="lane-skeleton__bar"
             style={{
-              height: `${heightPct}%`,
-              animationDelay: `${(idx % 12) * 0.08}s`,
+              height: `${SKELETON_BARS[idx % SKELETON_BARS.length]}%`,
+              animationDelay: `${(idx % 16) * 0.07}s`,
             }}
           />
         ))}

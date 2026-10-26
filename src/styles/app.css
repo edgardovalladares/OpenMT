@@ -147,7 +147,7 @@ button:disabled, input:disabled, select:disabled { opacity: .45; cursor: not-all
 .panel {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 4px;
   padding: 4px 8px 6px;
   background: var(--bg-raised);
@@ -157,7 +157,6 @@ button:disabled, input:disabled, select:disabled { opacity: .45; cursor: not-all
   box-sizing: border-box;
 }
 .panel > .row:only-of-type {
-  flex: 1;
   display: flex;
   align-items: center;
 }
@@ -272,6 +271,8 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 .lane-skeleton {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -282,19 +283,19 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 
 .lane-skeleton__bars {
   position: absolute;
-  inset: 6px 12px;
+  inset: 6px 4px;
+  width: calc(100% - 8px);
   display: flex;
   align-items: center;
-  gap: 3px;
-  opacity: 0.38;
+  gap: 2px;
+  opacity: 0.42;
   overflow: hidden;
   pointer-events: none;
 }
 
 .lane-skeleton__bar {
-  flex: 1;
-  min-width: 3px;
-  max-width: 7px;
+  flex: 1 1 0px;
+  min-width: 2px;
   background: var(--track-color, var(--accent));
   border-radius: 2px;
   animation: skeleton-bar-pulse 1.3s ease-in-out infinite alternate;
@@ -766,7 +767,7 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
 
 /* ---------- barra de secciones del timeline ---------- */
 .grid__sections-head {
-  height: 28px;
+  height: 32px;
   position: sticky;
   left: 0;
   z-index: 5;
@@ -778,22 +779,30 @@ input[type='range'] { accent-color: var(--accent); width: 100%; min-width: 80px;
   padding: 0 8px;
   gap: 6px;
   grid-column: 1;
+  box-sizing: border-box;
 }
 .grid__sections-title {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .08em;
   color: var(--text-dim);
   text-transform: uppercase;
+  flex-shrink: 0;
+}
+.grid__sections-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .sections-lane {
-  height: 28px;
+  height: 32px;
   position: relative;
   background: color-mix(in srgb, var(--bg-panel) 70%, var(--bg-app));
   border-bottom: 1px solid var(--border);
   grid-column: 2;
   user-select: none;
   overflow: hidden;
+  box-sizing: border-box;
 }
 .sections-lane__empty {
   position: absolute;
@@ -1986,7 +1995,6 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
   font-weight: 800;
   line-height: 1.25;
   color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 18px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 0, 0, 0.6);
   letter-spacing: .01em;
 }
 .lyrics-lowerthird__next {
@@ -1995,10 +2003,9 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
   margin-top: 6px;
   line-height: 1.3;
   color: #e0e5eb;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
 }
 
-/* Modo Teleprompter */
+/* Modo Teleprompter (Estilo Apple Music) */
 .lyrics-prompter {
   width: 100%;
   height: 100%;
@@ -2016,26 +2023,30 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
   flex: none;
 }
 .lyrics-prompter__line {
-  padding: 14px 24px;
+  padding: 16px 28px;
   max-width: 1100px;
   text-align: center;
   font-weight: 600;
-  line-height: 1.4;
-  opacity: 0.35;
-  transition: all .25s ease;
-  border-radius: 8px;
+  line-height: 1.45;
+  opacity: 0.32;
+  transition: all .35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 .lyrics-prompter__line--current {
   opacity: 1 !important;
   font-weight: 800 !important;
-  color: #fff !important;
-  transform: scale(1.06);
-  text-shadow: 0 0 24px rgba(255, 122, 47, 0.6), 0 2px 6px rgba(0, 0, 0, 0.9);
-  background: rgba(255, 122, 47, 0.15);
-  border: 1px solid rgba(255, 122, 47, 0.3);
+  color: #ffffff !important;
+  transform: scale(1.05);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
 }
 .lyrics-prompter__line--past {
   opacity: 0.22;
+  transform: scale(0.98);
 }
 
 /* Modo Pantalla Completa / Proyector */
@@ -2057,7 +2068,6 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
   font-weight: 800;
   line-height: 1.25;
   color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 24px rgba(0, 0, 0, 0.8);
 }
 .lyrics-fullscreen__next {
   font-weight: 500;
@@ -2065,7 +2075,23 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
   margin-top: 16px;
   line-height: 1.3;
   color: #d1d7e0;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* Sombra opcional de texto */
+.lyrics-stage--has-shadow .lyrics-lowerthird__current,
+.lyrics-stage--has-shadow .lyrics-fullscreen__current {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 0, 0, 0.85) !important;
+}
+.lyrics-stage--has-shadow .lyrics-lowerthird__next,
+.lyrics-stage--has-shadow .lyrics-fullscreen__next {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.85) !important;
+}
+
+.lyrics-stage:not(.lyrics-stage--has-shadow) .lyrics-lowerthird__current,
+.lyrics-stage:not(.lyrics-stage--has-shadow) .lyrics-fullscreen__current,
+.lyrics-stage:not(.lyrics-stage--has-shadow) .lyrics-lowerthird__next,
+.lyrics-stage:not(.lyrics-stage--has-shadow) .lyrics-fullscreen__next {
+  text-shadow: none !important;
 }
 
 /* Variaciones de tamaño de fuente */
@@ -2125,8 +2151,8 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 3px;
+  justify-content: flex-start;
+  gap: 4px;
   padding: 4px 8px 5px;
   box-sizing: border-box;
 }
@@ -2523,6 +2549,69 @@ body.is-lyrics-view.lyrics-theme-chroma-green,
     width: 100%;
   }
 }
+
+/* ---------- Overlay de cambio suave de canción en repertorio ---------- */
+.song-switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.song-switch-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  max-width: 440px;
+  width: 90%;
+}
+
+.song-switch-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.song-switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.song-switch-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.song-switch-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.song-switch-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 
 
 

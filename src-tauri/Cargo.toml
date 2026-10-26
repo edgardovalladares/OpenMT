@@ -1,6 +1,6 @@
 [package]
 name = "open-mt"
-version = "3.2.1"
+version = "3.2.2"
 description = "OpenMT DAW"
 authors = ["OpenMT"]
 edition = "2021"

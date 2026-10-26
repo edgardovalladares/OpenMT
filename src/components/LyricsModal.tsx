@@ -23,7 +23,6 @@ import {
   Wifi,
   ShieldCheck,
   Eye,
-  Radio,
   Download,
 } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
@@ -64,7 +63,6 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   // Estados de retroalimentación de copia
   const [copiedLocal, setCopiedLocal] = useState(false);
-  const [copiedRemote, setCopiedRemote] = useState(false);
   const [copiedQr, setCopiedQr] = useState(false);
 
   // Sala persistente y bloqueo
@@ -190,6 +188,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
       fontSize: options.fontSize,
       uppercase: String(options.uppercase),
       showNext: String(options.showNext),
+      textShadow: String(Boolean(options.textShadow)),
     });
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
@@ -205,6 +204,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
       fontSize: options.fontSize,
       uppercase: String(options.uppercase),
       showNext: String(options.showNext),
+      textShadow: String(Boolean(options.textShadow)),
     });
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
@@ -220,6 +220,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
       fontSize: options.fontSize,
       uppercase: String(options.uppercase),
       showNext: String(options.showNext),
+      textShadow: String(Boolean(options.textShadow)),
     });
     return `${origin}${pathname}?${searchParams.toString()}`;
   };
@@ -288,10 +289,6 @@ export function LyricsModal({ isOpen, onClose }: Props) {
 
   const handleCopyLocalLink = () => {
     copyToClipboard(generateLocalObsUrl(), setCopiedLocal);
-  };
-
-  const handleCopyRemoteRoom = () => {
-    copyToClipboard(generateRemoteUrl(), setCopiedRemote);
   };
 
   const handleCopyQrUrl = () => {
@@ -574,31 +571,31 @@ export function LyricsModal({ isOpen, onClose }: Props) {
               <div className="lyrics-display-left">
                 <div className="lyrics-obs-settings">
                   <div className="form-group">
-                    <label className="form-label">Modo de Visualización:</label>
+                    <label className="form-label">Modo de Visualización (3 Vistas):</label>
                     <div className="row">
-                      <button
-                        type="button"
-                        className={`btn btn--tiny ${options.mode === 'lowerthird' ? 'btn--accent' : ''}`}
-                        onClick={() => setLyricsOptions({ mode: 'lowerthird' })}
-                        title="Tercio inferior con dos líneas y sombra nítida, ideal para flotar sobre cámaras en vivo"
-                      >
-                        Tercio Inferior (OBS / Video)
-                      </button>
                       <button
                         type="button"
                         className={`btn btn--tiny ${options.mode === 'prompter' ? 'btn--accent' : ''}`}
                         onClick={() => setLyricsOptions({ mode: 'prompter' })}
-                        title="Teleprompter con scroll continuo y línea activa destacada para músicos en vivo"
+                        title="Teleprompter estilo Apple Music con scroll continuo y verso activo destacado para músicos"
                       >
-                        Teleprompter (Músicos)
+                        1. Músicos (Teleprompter)
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn--tiny ${options.mode === 'lowerthird' ? 'btn--accent' : ''}`}
+                        onClick={() => setLyricsOptions({ mode: 'lowerthird' })}
+                        title="Tercio inferior con dos líneas limpias, optimizado para OBS Studio y captura de video"
+                      >
+                        2. Tercio Inferior (OBS)
                       </button>
                       <button
                         type="button"
                         className={`btn btn--tiny ${options.mode === 'fullscreen' ? 'btn--accent' : ''}`}
                         onClick={() => setLyricsOptions({ mode: 'fullscreen' })}
-                        title="Pantalla completa grande centrada para proyectores o auditorios"
+                        title="Pantalla completa grande centrada para proyectores o auditorios, con editor de CSS"
                       >
-                        Pantalla Completa
+                        3. Pantalla Completa
                       </button>
                     </div>
                   </div>
@@ -610,7 +607,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                         type="button"
                         className={`btn btn--tiny ${options.theme === 'transparent' ? 'btn--accent' : ''}`}
                         onClick={() => setLyricsOptions({ theme: 'transparent' })}
-                        title="Fondo 100% transparente para incrustar en OBS Studio como Fuente Navegador"
+                        title="Fondo 100% transparente sin bordes para incrustar en OBS Studio como Fuente Navegador"
                       >
                         Transparente (OBS)
                       </button>
@@ -670,7 +667,7 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                     </div>
 
                     <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Opciones de Formato:</label>
+                      <label className="form-label">Opciones de Formato y Sombra:</label>
                       <div className="row">
                         <button
                           type="button"
@@ -688,11 +685,87 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                           {options.showNext && <Check size={11} style={{ marginRight: 4, display: 'inline-block', verticalAlign: -1 }} />}
                           {options.showNext ? 'Línea Siguiente' : 'Ocultar Siguiente'}
                         </button>
+                        <button
+                          type="button"
+                          className={`btn btn--tiny ${options.textShadow ? 'btn--accent' : ''}`}
+                          onClick={() => setLyricsOptions({ textShadow: !options.textShadow })}
+                          title="Alternar sombra/contorno para resaltar texto sobre video o fondos claros"
+                        >
+                          {options.textShadow && <Check size={11} style={{ marginRight: 4, display: 'inline-block', verticalAlign: -1 }} />}
+                          {options.textShadow ? 'Sombra Activa' : 'Sin Sombra'}
+                        </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="lyrics-display-info-card">
+                  {/* Editor de CSS Personalizado exclusivo para Pantalla Completa */}
+                  {options.mode === 'fullscreen' && (
+                    <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Sparkles size={13} style={{ color: 'var(--accent)' }} />
+                          Editor de CSS (Pantalla Completa):
+                        </span>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            type="button"
+                            className="btn btn--tiny"
+                            onClick={() => {
+                              const exampleCss = `/* Ejemplo de estilo cinematográfico para Pantalla Completa */
+.lyrics-stage--fullscreen .lyrics-fullscreen__current {
+  font-family: 'Figtree', sans-serif;
+  color: #ffffff;
+  font-size: clamp(38px, 6vw, 72px);
+  letter-spacing: 0.02em;
+}
+.lyrics-stage--fullscreen .lyrics-fullscreen__next {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.85em;
+}`;
+                              setLyricsOptions({ customCss: exampleCss });
+                            }}
+                            title="Insertar plantilla de ejemplo"
+                          >
+                            Insertar Ejemplo
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--tiny btn--danger"
+                            onClick={() => setLyricsOptions({ customCss: '' })}
+                            title="Restablecer CSS al valor por defecto"
+                          >
+                            Restablecer
+                          </button>
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="text-input"
+                        style={{
+                          width: '100%',
+                          minHeight: 70,
+                          maxHeight: 160,
+                          fontFamily: 'ui-monospace, monospace',
+                          fontSize: 10.5,
+                          lineHeight: 1.4,
+                          padding: '6px 8px',
+                          resize: 'vertical',
+                          boxSizing: 'border-box',
+                        }}
+                        placeholder="/* Escribe tu CSS personalizado aquí */&#10;.lyrics-stage--fullscreen .lyrics-fullscreen__current { color: #fef08a; }"
+                        value={options.customCss || ''}
+                        onChange={(e) => setLyricsOptions({ customCss: e.target.value })}
+                        spellCheck={false}
+                      />
+
+                      <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.35 }}>
+                        💡 <strong>Guía de clases:</strong> Usa <code>.lyrics-fullscreen__current</code> para la línea activa, <code>.lyrics-fullscreen__next</code> para la siguiente o <code>.lyrics-stage--fullscreen</code> para el fondo.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="lyrics-display-info-card" style={{ marginTop: 10 }}>
                     <Lightbulb size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                     <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
                       Cualquier ajuste de diseño que realices aquí se actualiza <strong>en tiempo real</strong> en todas las pantallas, ventanas emergentes y fuentes de OBS conectadas.
@@ -715,22 +788,47 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                 </div>
 
                 <div
-                  className={`lyrics-preview-box lyrics-preview-box--large lyrics-stage--${options.theme} lyrics-stage--${options.mode} lyrics-stage--font-${options.fontSize}`}
+                  className={`lyrics-preview-box lyrics-preview-box--large lyrics-stage--${options.theme} lyrics-stage--${options.mode} lyrics-stage--font-${options.fontSize} ${options.textShadow ? 'lyrics-stage--has-shadow' : ''}`}
                 >
-                  <div style={{ textAlign: 'center', width: '100%', padding: '24px 16px' }}>
-                    <div style={{ fontWeight: 800 }}>
-                      {options.uppercase
-                        ? (parsedLines[0]?.text || 'EJEMPLO DE LÍNEA ACTUAL SINCRONIZADA').toUpperCase()
-                        : parsedLines[0]?.text || 'Ejemplo de línea actual sincronizada'}
-                    </div>
-                    {options.showNext && (
-                      <div style={{ opacity: 0.68, fontSize: '0.85em', marginTop: 8 }}>
+                  {options.mode === 'fullscreen' && options.customCss && (
+                    <style dangerouslySetInnerHTML={{ __html: options.customCss }} />
+                  )}
+
+                  {options.mode === 'prompter' ? (
+                    /* Vista estilo Apple Music para teleprompter */
+                    <div style={{ width: '100%', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                      <div style={{ opacity: 0.25, fontSize: '0.9em' }}>
                         {options.uppercase
-                          ? (parsedLines[1]?.text || 'PRÓXIMA LÍNEA EN COLA...').toUpperCase()
-                          : parsedLines[1]?.text || 'Próxima línea en cola...'}
+                          ? (parsedLines[0]?.text || 'VERSO ANTERIOR').toUpperCase()
+                          : parsedLines[0]?.text || 'Verso anterior'}
                       </div>
-                    )}
-                  </div>
+                      <div style={{ fontWeight: 800, color: '#ffffff', transform: 'scale(1.05)', textShadow: options.textShadow ? '0 0 20px rgba(255,255,255,0.4)' : 'none' }}>
+                        {options.uppercase
+                          ? (parsedLines[1]?.text || 'VERSO ACTUAL EN REPRODUCCIÓN').toUpperCase()
+                          : parsedLines[1]?.text || 'Verso actual en reproducción'}
+                      </div>
+                      <div style={{ opacity: 0.35, fontSize: '0.9em' }}>
+                        {options.uppercase
+                          ? (parsedLines[2]?.text || 'VERSO SIGUIENTE EN COLA').toUpperCase()
+                          : parsedLines[2]?.text || 'Verso siguiente en cola'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', width: '100%', padding: '24px 16px' }}>
+                      <div style={{ fontWeight: 800 }}>
+                        {options.uppercase
+                          ? (parsedLines[0]?.text || 'EJEMPLO DE LÍNEA ACTUAL SINCRONIZADA').toUpperCase()
+                          : parsedLines[0]?.text || 'Ejemplo de línea actual sincronizada'}
+                      </div>
+                      {options.showNext && (
+                        <div style={{ opacity: 0.68, fontSize: '0.85em', marginTop: 8 }}>
+                          {options.uppercase
+                            ? (parsedLines[1]?.text || 'PRÓXIMA LÍNEA EN COLA...').toUpperCase()
+                            : parsedLines[1]?.text || 'Próxima línea en cola...'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -739,61 +837,90 @@ export function LyricsModal({ isOpen, onClose }: Props) {
           {/* SECCIÓN 3: Transmisión, Enlaces y Código QR (Optimizado por Entorno Desktop / Web) */}
           {activeTab === 'broadcast' && (
             <div className="lyrics-broadcast-container">
-              {/* Barra Superior de Sala Global y Bloqueo */}
-              <div className="lyrics-room-bar">
-                <div className="lyrics-room-bar__info">
-                  {isLocked ? (
-                    <ShieldCheck size={18} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
-                  ) : (
-                    <Unlock size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                  )}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <strong style={{ fontSize: 12 }}>Sala Global de Transmisión:</strong>
-                      <span className="lyrics-room-bar__code">{roomCode}</span>
-                    </div>
-                    <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
-                      {isLocked
-                        ? 'Enlace protegido con candado. No cambiará entre canciones ni al reiniciar la app.'
-                        : 'Enlace desbloqueado. Puedes regenerar una nueva sala si lo necesitas.'}
+              {/* Barra Superior */}
+              {isDesktop ? (
+                <div className="lyrics-room-bar">
+                  <div className="lyrics-room-bar__info">
+                    <Wifi size={18} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ fontSize: 12 }}>Servidor LAN Local:</strong>
+                        <span className="lyrics-room-bar__code">{currentHost}</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                        Transmisión local de ultra baja latencia para celulares, tablets y OBS sin requerir conexión a internet.
+                      </div>
                     </div>
                   </div>
+
+                  <div className="lyrics-room-bar__actions">
+                    <button
+                      type="button"
+                      className="btn btn--tiny btn--accent"
+                      onClick={handleOpenPopup}
+                      title="Abrir en ventana emergente independiente para proyector o segunda pantalla"
+                    >
+                      <ExternalLink size={12} />
+                      <span>Abrir Ventana Limpia</span>
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                <div className="lyrics-room-bar">
+                  <div className="lyrics-room-bar__info">
+                    {isLocked ? (
+                      <ShieldCheck size={18} style={{ color: 'var(--meter-ok)', flexShrink: 0 }} />
+                    ) : (
+                      <Unlock size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    )}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ fontSize: 12 }}>Sala Global de Transmisión:</strong>
+                        <span className="lyrics-room-bar__code">{roomCode}</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                        {isLocked
+                          ? 'Enlace protegido con candado. No cambiará entre canciones ni al reiniciar la app.'
+                          : 'Enlace desbloqueado. Puedes regenerar una nueva sala si lo necesitas.'}
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="lyrics-room-bar__actions">
-                  <button
-                    type="button"
-                    className={`btn btn--tiny ${isLocked ? 'btn--accent' : ''}`}
-                    onClick={handleToggleLock}
-                    title={isLocked ? 'Hacer clic para permitir regenerar el enlace' : 'Bloquear enlace para que nunca se modifique'}
-                  >
-                    {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
-                    <span>{isLocked ? 'Bloqueado' : 'Desbloqueado'}</span>
-                  </button>
+                  <div className="lyrics-room-bar__actions">
+                    <button
+                      type="button"
+                      className={`btn btn--tiny ${isLocked ? 'btn--accent' : ''}`}
+                      onClick={handleToggleLock}
+                      title={isLocked ? 'Hacer clic para permitir regenerar el enlace' : 'Bloquear enlace para que nunca se modifique'}
+                    >
+                      {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                      <span>{isLocked ? 'Bloqueado' : 'Desbloqueado'}</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    className="btn btn--tiny"
-                    onClick={handleRegenerateRoom}
-                    disabled={isLocked}
-                    title={isLocked ? 'Desbloquea el enlace primero para regenerar' : 'Generar una nueva sala aleatoria'}
-                  >
-                    <RotateCcw size={12} />
-                    <span>Regenerar</span>
-                  </button>
+                    <button
+                      type="button"
+                      className="btn btn--tiny"
+                      onClick={handleRegenerateRoom}
+                      disabled={isLocked}
+                      title={isLocked ? 'Desbloquea el enlace primero para regenerar' : 'Generar una nueva sala aleatoria'}
+                    >
+                      <RotateCcw size={12} />
+                      <span>Regenerar</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    className="btn btn--tiny btn--accent"
-                    onClick={handleOpenPopup}
-                    title="Abrir en ventana emergente independiente para proyector o segunda pantalla"
-                    style={{ marginLeft: 6 }}
-                  >
-                    <ExternalLink size={12} />
-                    <span>Abrir Ventana Limpia</span>
-                  </button>
+                    <button
+                      type="button"
+                      className="btn btn--tiny btn--accent"
+                      onClick={handleOpenPopup}
+                      title="Abrir en ventana emergente independiente para proyector o segunda pantalla"
+                      style={{ marginLeft: 6 }}
+                    >
+                      <ExternalLink size={12} />
+                      <span>Abrir Ventana Limpia</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Tarjeta Principal Adaptada (Desktop LAN vs Web WebRTC) */}
               {isDesktop ? (
@@ -1071,32 +1198,32 @@ export function LyricsModal({ isOpen, onClose }: Props) {
                   {isDesktop ? (
                     <>
                       <div className="lyrics-subcard__header">
-                        <Radio size={15} style={{ color: '#38bdf8' }} />
-                        <strong style={{ fontSize: 12 }}>Conexión Alternativa por Internet (WebRTC)</strong>
+                        <Eye size={15} style={{ color: 'var(--accent)' }} />
+                        <strong style={{ fontSize: 12 }}>Proyector y Segunda Pantalla</strong>
                       </div>
                       <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
-                        Si necesitas transmitir la letra a alguien que está <strong>fuera del auditorio o red Wi-Fi</strong>, puedes usar la conexión WebRTC a distancia.
+                        Abre una ventana limpia e independiente para arrastrarla a un proyector, televisor o monitor de escenario.
                       </p>
 
-                      <div className="lyrics-qr-url-box" style={{ marginTop: 6 }} title={generateRemoteUrl()}>
-                        {generateRemoteUrl()}
-                      </div>
-
-                      <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                      <div className="row" style={{ gap: 6, marginTop: 10 }}>
                         <button
                           type="button"
-                          className={`btn btn--tiny ${copiedRemote ? 'btn--play' : ''}`}
-                          onClick={handleCopyRemoteRoom}
-                          style={{ minWidth: 140 }}
+                          className="btn btn--tiny btn--accent"
+                          onClick={handleOpenPopup}
+                          style={{ flex: 1 }}
                         >
-                          {copiedRemote ? <Check size={12} /> : <Globe size={12} />}
-                          <span>{copiedRemote ? '¡Copiado!' : 'Copiar Enlace Online'}</span>
+                          <ExternalLink size={12} />
+                          <span>Abrir Ventana Limpia</span>
                         </button>
                       </div>
 
-                      <div className="lyrics-tip-box" style={{ marginTop: 8 }}>
-                        <Lightbulb size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                        <span>Para escenarios locales sin internet, utiliza siempre el <strong>Enlace WiFi de arriba</strong>.</span>
+                      <div className="lyrics-mini-guide" style={{ marginTop: 10 }}>
+                        <strong>Consejos de Proyección:</strong>
+                        <ol>
+                          <li>Arrastra la ventana limpia a tu segunda pantalla.</li>
+                          <li>Haz <strong>doble clic</strong> o presiona <strong>F</strong> para pantalla completa.</li>
+                          <li>Tus cambios de letra y estilos se reflejan automáticamente.</li>
+                        </ol>
                       </div>
                     </>
                   ) : (

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Volume2,
   Sliders,
@@ -22,6 +23,11 @@ export function MetronomePanel() {
   const [syncWithDaw, setSyncWithDaw] = useState(metronome.config.syncWithDaw);
   const [activeBeat, setActiveBeat] = useState(-1);
   const [isOpen, setIsOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
+
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const settingsBtnRef = useRef<HTMLButtonElement>(null);
+  const timeSigBtnRef = useRef<HTMLButtonElement>(null);
 
   // Tap tempo state
   const tapTimesRef = useRef<number[]>([]);
@@ -53,6 +59,53 @@ export function MetronomePanel() {
       unsubBeat();
     };
   }, []);
+
+  const updatePosition = useCallback(() => {
+    const anchor = settingsBtnRef.current || timeSigBtnRef.current;
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      const popoverWidth = 280;
+      const left = Math.max(10, Math.min(window.innerWidth - popoverWidth - 10, rect.left - 40));
+      setPopoverPos({
+        top: Math.round(rect.bottom + 6),
+        left: Math.round(left),
+      });
+    }
+  }, []);
+
+  const toggleOpen = () => {
+    if (!isOpen) {
+      updatePosition();
+    }
+    setIsOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        (popoverRef.current && popoverRef.current.contains(target)) ||
+        (settingsBtnRef.current && settingsBtnRef.current.contains(target)) ||
+        (timeSigBtnRef.current && timeSigBtnRef.current.contains(target))
+      ) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
+    const handleResize = () => updatePosition();
+
+    window.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+    return () => {
+      window.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [isOpen, updatePosition]);
 
   const handleToggle = () => {
     metronome.toggle();
@@ -106,71 +159,99 @@ export function MetronomePanel() {
   const beatsCount = metronome.beatsPerBar;
 
   return (
-    <section className="panel panel--metronome" aria-label="Metrónomo">
-      <div className="panel__header-row">
-        <span className="panel__label">METRÓNOMO</span>
-        {/* Luces de compás / pulsos visuales */}
-        <div className="metronome-dots" aria-hidden="true">
-          {Array.from({ length: beatsCount }).map((_, i) => (
-            <span
-              key={i}
-              className={`metronome-dot ${activeBeat === i ? (i === 0 ? 'metronome-dot--accent' : 'metronome-dot--active') : ''}`}
-            />
-          ))}
+    <>
+      <section className="panel panel--metronome" aria-label="Metrónomo">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+          <span className="panel__label">METRÓNOMO</span>
+          {/* Luces de compás / pulsos visuales en la cabecera */}
+          <div className="metronome-dots" aria-hidden="true">
+            {Array.from({ length: beatsCount }).map((_, i) => (
+              <span
+                key={i}
+                className={`metronome-dot ${activeBeat === i ? (i === 0 ? 'metronome-dot--accent' : 'metronome-dot--active') : ''}`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="row">
-        {/* Botón On/Off principal */}
-        <button
-          type="button"
-          className={`btn btn--tiny ${isRunning ? 'btn--accent' : ''}`}
-          onClick={handleToggle}
-          title={isRunning ? 'Detener metrónomo' : 'Iniciar metrónomo'}
-          aria-label={isRunning ? 'Pausar metrónomo' : 'Activar metrónomo'}
-        >
-          {isRunning ? <Square size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
-          <span>{timeSignature}</span>
-        </button>
-
-        {/* BPM Readout y Stepper */}
-        <div className="stepper" style={{ maxWidth: 74 }}>
+        {/* Fila 1: Botón Play y Compás */}
+        <div className="row" style={{ gap: 4, alignItems: 'center' }}>
           <button
             type="button"
-            className="btn btn--tiny stepper__btn"
-            onClick={() => handleBpmChange(currentBpm - 1)}
-            title="Reducir 1 BPM"
+            className={`btn btn--tiny ${isRunning ? 'btn--accent' : ''}`}
+            onClick={handleToggle}
+            title={isRunning ? 'Detener metrónomo' : 'Iniciar metrónomo'}
+            aria-label={isRunning ? 'Pausar metrónomo' : 'Activar metrónomo'}
+            style={{ height: 24, padding: '2px 7px', minWidth: 28 }}
           >
-            -
+            {isRunning ? <Square size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
           </button>
-          <span className="stepper__output" title="Tempo del metrónomo en BPM">
-            {currentBpm}
-          </span>
+
           <button
+            ref={timeSigBtnRef}
             type="button"
-            className="btn btn--tiny stepper__btn"
-            onClick={() => handleBpmChange(currentBpm + 1)}
-            title="Aumentar 1 BPM"
+            className="btn btn--tiny"
+            onClick={toggleOpen}
+            title="Cambiar compás / métrica del metrónomo"
+            style={{ height: 24, padding: '2px 6px', fontWeight: 700, flex: 1 }}
           >
-            +
+            {timeSignature}
           </button>
         </div>
 
-        {/* Botón de configuración detallada */}
-        <button
-          type="button"
-          className={`btn btn--tiny ${isOpen ? 'btn--accent' : ''}`}
-          onClick={() => setIsOpen(!isOpen)}
-          title="Configurar compás, sonido, volumen y tap tempo"
-          aria-label="Ajustes de metrónomo"
-        >
-          <Sliders size={12} />
-        </button>
-      </div>
+        {/* Fila 2: BPM Stepper y Botón Ajustes */}
+        <div className="row" style={{ gap: 4, alignItems: 'center', marginTop: 2 }}>
+          <div className="stepper" style={{ flex: 1, height: 22 }}>
+            <button
+              type="button"
+              className="btn btn--tiny stepper__btn"
+              onClick={() => handleBpmChange(currentBpm - 1)}
+              title="Reducir 1 BPM"
+              style={{ width: 18, height: 22, padding: 0 }}
+            >
+              -
+            </button>
+            <span className="stepper__output" style={{ fontSize: 11 }} title="Tempo del metrónomo en BPM">
+              {currentBpm}
+            </span>
+            <button
+              type="button"
+              className="btn btn--tiny stepper__btn"
+              onClick={() => handleBpmChange(currentBpm + 1)}
+              title="Aumentar 1 BPM"
+              style={{ width: 18, height: 22, padding: 0 }}
+            >
+              +
+            </button>
+          </div>
 
-      {/* Popover / Desplegable de Ajustes */}
-      {isOpen && (
-        <div className="metronome-popover" onClick={(e) => e.stopPropagation()}>
+          <button
+            ref={settingsBtnRef}
+            type="button"
+            className={`btn btn--tiny ${isOpen ? 'btn--accent' : ''}`}
+            onClick={toggleOpen}
+            title="Configurar compás, sonido, volumen y tap tempo"
+            aria-label="Ajustes de metrónomo"
+            style={{ minWidth: 24, height: 22, padding: '1px 5px' }}
+          >
+            <Sliders size={11} />
+          </button>
+        </div>
+      </section>
+
+      {/* Popover / Desplegable de Ajustes renderizado en Portal para evitar recortes */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="metronome-popover"
+          ref={popoverRef}
+          style={{
+            position: 'fixed',
+            top: `${popoverPos.top}px`,
+            left: `${popoverPos.left}px`,
+            zIndex: 99999,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="metronome-popover__header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={13} style={{ color: 'var(--accent)' }} />
@@ -203,41 +284,39 @@ export function MetronomePanel() {
             </div>
           </div>
 
-          {/* Selector de Tipo de Sonido */}
+          {/* Selector de Sonido */}
           <div className="form-group">
-            <label className="form-label">Tipo de Sonido:</label>
+            <label className="form-label">Sonido del Click:</label>
             <div className="metronome-sound-grid">
               {(
                 [
-                  { id: 'digital', label: 'Digital (Beep)' },
-                  { id: 'woodblock', label: 'Madera (Clave)' },
-                  { id: 'cowbell', label: 'Cencerro (808)' },
-                  { id: 'rimshot', label: 'Aro (Rimshot)' },
+                  { id: 'digital', label: 'Digital' },
+                  { id: 'woodblock', label: 'Woodblock' },
+                  { id: 'cowbell', label: 'Cowbell' },
+                  { id: 'rimshot', label: 'Rimshot' },
                   { id: 'mechanical', label: 'Mecánico' },
                 ] as const
-              ).map((snd) => (
+              ).map((s) => (
                 <button
-                  key={snd.id}
+                  key={s.id}
                   type="button"
-                  className={`btn btn--tiny ${sound === snd.id ? 'btn--accent' : ''}`}
-                  onClick={() => handleSoundChange(snd.id)}
+                  className={`btn btn--tiny ${sound === s.id ? 'btn--accent' : ''}`}
+                  onClick={() => handleSoundChange(s.id)}
                 >
-                  {snd.label}
+                  {s.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Slider de Volumen */}
+          {/* Control de Volumen */}
           <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 2 }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Volume2 size={12} />
                 <span>Volumen:</span>
               </label>
-              <span style={{ fontSize: 11, fontFamily: 'ui-monospace, monospace', color: 'var(--text-dim)' }}>
-                {Math.round(volume * 100)} %
-              </span>
+              <span className="metronome-vol-val">{Math.round(volume * 100)}%</span>
             </div>
             <input
               type="range"
@@ -246,31 +325,36 @@ export function MetronomePanel() {
               step="0.05"
               value={volume}
               onChange={(e) => handleVolumeChange(Number(e.target.value))}
+              aria-label="Volumen del metrónomo"
             />
           </div>
 
-          {/* Tap Tempo y Sincronización */}
-          <div className="metronome-popover__footer">
-            <button
-              type="button"
-              className="btn btn--tiny"
-              onClick={handleTapTempo}
-              title="Haz clic repetidamente al ritmo deseado para calcular el BPM"
-            >
-              Tap Tempo
-            </button>
-
-            <label className="metronome-sync-checkbox" title="El metrónomo arrancará y parará en compás con la reproducción del audio">
+          {/* Sincronización con DAW */}
+          <div className="form-group">
+            <label className="checkbox-label" title="Arranca y se detiene automáticamente junto al transporte del DAW">
               <input
                 type="checkbox"
                 checked={syncWithDaw}
                 onChange={(e) => handleSyncChange(e.target.checked)}
               />
-              <span>Auto con DAW</span>
+              <span>Sincronizar inicio/paro con Transporte DAW</span>
             </label>
           </div>
-        </div>
+
+          {/* Tap Tempo */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <button
+              type="button"
+              className="btn btn--tap"
+              onClick={handleTapTempo}
+              title="Haz clic repetidamente al ritmo deseado para calcular el BPM"
+            >
+              TAP TEMPO
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
-    </section>
+    </>
   );
 }

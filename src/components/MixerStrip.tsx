@@ -189,14 +189,7 @@ export function MixerStrip({ id, orientation }: { id: string; orientation: Orien
     </div>
   );
   const stepper = (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-      <Stepper label={`Tono ${t.name}`} value={t.semitones} min={-12} max={12} unit=" st" onChange={(v) => setTrackSemitones(id, v)} />
-      {t.pitchLocked && (
-        <span title="Tono bloqueado: ignora la transposición máster" style={{ color: 'var(--accent)', display: 'inline-flex', padding: 2 }}>
-          <Lock size={11} />
-        </span>
-      )}
-    </div>
+    <Stepper label={`Tono ${t.name}`} value={t.semitones} min={-12} max={12} unit=" st" onChange={(v) => setTrackSemitones(id, v)} />
   );
 
   if (orientation === 'horizontal') {
@@ -209,7 +202,14 @@ export function MixerStrip({ id, orientation }: { id: string; orientation: Orien
   }
   return (
     <div className="strip strip--vertical" style={style}>
-      <div className="strip__name" title={t.name}>{t.name}</div>
+      <div className="strip__name" title={t.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+        {t.pitchLocked && (
+          <span title="Tono bloqueado: ignora la transposición máster" style={{ color: 'var(--accent)', display: 'inline-flex', flexShrink: 0 }}>
+            <Lock size={10} />
+          </span>
+        )}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+      </div>
       {ms}
       {stepper}
       {pan}

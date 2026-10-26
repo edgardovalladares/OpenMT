@@ -105,6 +105,8 @@ export interface DawState {
   // Canciones y Setlist en Vivo (Pestañas)
   songs: SongTabItem[];
   activeSongId: string;
+  isSwitchingSong: boolean;
+  switchingSongName: string | null;
   addSong(name?: string): string;
   selectSong(id: string): Promise<void>;
   renameSong(id: string, name: string): void;
@@ -312,6 +314,8 @@ export const useDaw = create<DawState>()((set, get) => {
     // Canciones y Setlist en Vivo (Pestañas)
     songs: [initialSong],
     activeSongId: initialSongId,
+    isSwitchingSong: false,
+    switchingSongName: null,
 
     addSong: (name?: string) => {
       const s = get();
@@ -392,6 +396,9 @@ export const useDaw = create<DawState>()((set, get) => {
       const targetSong = s.songs.find((item) => item.id === targetId);
       if (!targetSong) return;
 
+      // Iniciar estado de transición visual para evitar cambios bruscos
+      set({ isSwitchingSong: true, switchingSongName: targetSong.name });
+
       // 1. Guardar canción actual
       const updatedSongs = s.songs.map((song) => {
         if (song.id === s.activeSongId) {
@@ -462,6 +469,10 @@ export const useDaw = create<DawState>()((set, get) => {
       const activeLyrics = targetSong.lyrics ?? { rawLrc: '', offsetMs: 350 };
       broadcastLyricsUpdate(activeLyrics.rawLrc, activeLyrics.offsetMs, targetSong.name, s.lyricsOptions);
       broadcastTimeUpdate(0, 'stopped', engine.duration);
+
+      // Pequeña pausa elegante de transición para suavizar el cambio
+      await new Promise((resolve) => setTimeout(resolve, 380));
+      set({ isSwitchingSong: false, switchingSongName: null });
     },
 
     renameSong: (id: string, name: string) => {
@@ -527,6 +538,8 @@ export const useDaw = create<DawState>()((set, get) => {
         fontSize: 'large',
         uppercase: false,
         showNext: true,
+        textShadow: false,
+        customCss: '',
       };
       if (typeof window === 'undefined') return fallback;
       try {

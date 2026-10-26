@@ -24,6 +24,8 @@ function DawApp() {
   const mixerPosition = useDaw((s) => s.mixerPosition);
   const hasTracks = useDaw((s) => s.tracks.length > 0);
   const addFiles = useDaw((s) => s.addFiles);
+  const isSwitchingSong = useDaw((s) => s.isSwitchingSong);
+  const switchingSongName = useDaw((s) => s.switchingSongName);
   const narrow = useMediaQuery('(max-width: 760px)');
   const [dragging, setDragging] = useState(false);
   const layout = narrow ? 'bottom' : mixerPosition;
@@ -169,6 +171,20 @@ function DawApp() {
         isOpen={isLyricsOpen}
         onClose={() => setIsLyricsOpen(false)}
       />
+
+      {/* Cargador general suave al cambiar de canción en el repertorio */}
+      {isSwitchingSong && (
+        <div className="song-switch-overlay" role="status" aria-live="polite">
+          <div className="song-switch-modal">
+            <div className="song-switch-spinner" />
+            <div className="song-switch-info">
+              <span className="song-switch-tag">Cambiando canción</span>
+              <h3 className="song-switch-title">{switchingSongName || 'Cargando repertorio...'}</h3>
+              <span className="song-switch-sub">Preparando pistas, mezcla y sincronización...</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

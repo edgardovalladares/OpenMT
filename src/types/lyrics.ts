@@ -20,6 +20,8 @@ export interface LyricsDisplayOptions {
   fontSize: LyricsFontSize;
   uppercase: boolean;
   showNext: boolean;
+  textShadow?: boolean;
+  customCss?: string;
 }
 
 export interface LyricsSyncMessage {

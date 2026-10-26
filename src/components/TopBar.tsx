@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Undo2, Redo2, Clock as ClockIcon, FileText } from 'lucide-react';
+import { Clock as ClockIcon, FileText } from 'lucide-react';
 import { useDaw } from '../store/useDaw';
 import { engine } from '../audio/engine';
 import { subscribeFrame } from '../audio/frameLoop';
@@ -19,24 +19,19 @@ function Clock() {
     }),
     [],
   );
-  return <span className="readout" ref={ref}>0:00.0 / 0:00.0</span>;
+  return <span className="readout readout--transport" ref={ref}>0:00.0 / 0:00.0</span>;
 }
 
 export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
   const playing = useDaw((s) => s.transport === 'playing');
   const hasTracks = useDaw((s) => s.tracks.length > 0);
   const addFiles = useDaw((s) => s.addFiles);
-
-  const canUndo = useDaw((s) => s.canUndo);
-  const canRedo = useDaw((s) => s.canRedo);
-  const undo = useDaw((s) => s.undo);
-  const redo = useDaw((s) => s.redo);
   const hasLyrics = useDaw((s) => Boolean(s.lyrics.rawLrc.trim()));
 
   const theme = useDaw((s) => s.theme);
   const queuedSectionId = useDaw((s) => s.queuedSectionId);
-  const sections = useDaw((s) => s.sections);
   const queueSection = useDaw((s) => s.queueSection);
+  const sections = useDaw((s) => s.sections);
   const queuedSec = sections.find((sec) => sec.id === queuedSectionId);
 
   return (
@@ -49,10 +44,11 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
         />
       </div>
 
+      {/* Transporte Principal */}
       <section className="panel panel--transport" aria-label="Transporte">
         <span className="panel__label">TRANSPORTE</span>
-        <div className="row">
-          <label className="btn" title="Abrir / importar audio" aria-label="Abrir audio">
+        <div className="row" style={{ gap: 4 }}>
+          <label className="btn" title="Abrir / importar audio" aria-label="Abrir audio" style={{ padding: '3px 8px' }}>
             <IconOpen />
             <input
               type="file"
@@ -72,6 +68,7 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
             onClick={() => void engine.toggle()}
             aria-label={playing ? 'Pausa' : 'Reproducir'}
             title="Espacio para Reproducir/Pausar"
+            style={{ padding: '3px 10px' }}
           >
             {playing ? <IconPause /> : <IconPlay />}
           </button>
@@ -81,37 +78,13 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
             onClick={() => engine.stop()}
             aria-label="Detener"
             title="Detener"
+            style={{ padding: '3px 8px' }}
           >
             <IconStop />
           </button>
-          <Clock />
         </div>
-      </section>
-
-      {/* Historial Deshacer / Rehacer */}
-      <section className="panel" aria-label="Historial">
-        <span className="panel__label">HISTORIAL</span>
-        <div className="row">
-          <button
-            className="btn"
-            disabled={!canUndo}
-            onClick={() => undo()}
-            title="Deshacer última acción (Ctrl+Z)"
-            aria-label="Deshacer"
-          >
-            <Undo2 size={14} />
-            <span className="btn__label-responsive">Deshacer</span>
-          </button>
-          <button
-            className="btn"
-            disabled={!canRedo}
-            onClick={() => redo()}
-            title="Rehacer acción deshecha (Ctrl+Y)"
-            aria-label="Rehacer"
-          >
-            <Redo2 size={14} />
-            <span className="btn__label-responsive">Rehacer</span>
-          </button>
+        <div className="row" style={{ marginTop: 2 }}>
+          <Clock />
         </div>
       </section>
 
@@ -121,7 +94,7 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
       <MetronomePanel />
 
       {/* Panel Letras LRC / OBS */}
-      <section className="panel" aria-label="Letras">
+      <section className="panel panel--lyrics" aria-label="Letras">
         <span className="panel__label">LETRAS</span>
         <div className="row">
           <button
@@ -133,14 +106,20 @@ export function TopBar({ onOpenLyrics }: { onOpenLyrics?: () => void }) {
                 ? 'Letras sincronizadas activas (clic para editar o transmitir a OBS)'
                 : 'Cargar letra sincronizada (.lrc) para OBS o pantallas'
             }
+            style={{ height: 24, fontSize: 11 }}
           >
-            <FileText size={14} />
+            <FileText size={12} />
             <span>{hasLyrics ? 'Letras (LRC)' : 'Cargar Letra'}</span>
           </button>
         </div>
+        <div className="row" style={{ marginTop: 2 }}>
+          <span className="chip chip--data" style={{ fontSize: 9.5, padding: '1px 6px', width: '100%', textAlign: 'center' }}>
+            {hasLyrics ? 'Sincronizado' : 'Sin letra'}
+          </span>
+        </div>
       </section>
 
-      {/* Panel Repertorio / Setlist de Canciones (Alineado con Letras) */}
+      {/* Panel Repertorio / Setlist de Canciones */}
       <SongCards />
 
       {/* Indicador visible cuando una sección está en cola para saltar */}

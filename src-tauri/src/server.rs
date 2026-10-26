@@ -490,7 +490,7 @@ impl LanServer {
       width: 100%;
     }
 
-    /* MODO: Teleprompter (Scroll continuo para músicos) */
+    /* MODO: Teleprompter (Scroll continuo para músicos - Estilo Apple Music) */
     .stage.mode-prompter {
       overflow-y: auto;
       scroll-behavior: smooth;
@@ -504,26 +504,30 @@ impl LanServer {
       flex: none;
     }
     .prompter-line {
-      padding: 14px 24px;
+      padding: 16px 28px;
       max-width: 1100px;
       text-align: center;
       font-weight: 600;
-      line-height: 1.4;
-      opacity: 0.35;
-      transition: all 0.25s ease;
-      border-radius: 8px;
+      line-height: 1.45;
+      opacity: 0.32;
+      transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     .prompter-line.current {
       opacity: 1 !important;
       font-weight: 800 !important;
-      color: #fff !important;
-      transform: scale(1.06);
-      text-shadow: 0 0 24px rgba(255, 122, 47, 0.6), 0 2px 6px rgba(0, 0, 0, 0.9);
-      background: rgba(255, 122, 47, 0.15);
-      border: 1px solid rgba(255, 122, 47, 0.3);
+      color: #ffffff !important;
+      transform: scale(1.05);
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      text-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
     }
     .prompter-line.past {
       opacity: 0.22;
+      transform: scale(0.98);
     }
 
     /* Líneas en Lowerthird y Fullscreen */
@@ -531,7 +535,6 @@ impl LanServer {
       font-weight: 800;
       line-height: 1.25;
       color: #ffffff;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 18px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 0, 0, 0.6);
       letter-spacing: 0.01em;
       transition: all 0.15s ease;
     }
@@ -541,18 +544,27 @@ impl LanServer {
       margin-top: 8px;
       line-height: 1.3;
       color: #e0e5eb;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
       transition: all 0.15s ease;
     }
     body.theme-transparent .current-line,
     .stage.theme-transparent .current-line {
       color: #ffffff;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 0, 0, 0.85);
     }
     body.theme-transparent .next-line,
     .stage.theme-transparent .next-line {
       color: #e5e9f0;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.85);
+    }
+
+    /* Sombra opcional de texto */
+    .stage.has-shadow .current-line {
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 0, 0, 0.85) !important;
+    }
+    .stage.has-shadow .next-line {
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.85) !important;
+    }
+    .stage:not(.has-shadow) .current-line,
+    .stage:not(.has-shadow) .next-line {
+      text-shadow: none !important;
     }
 
     /* Tamaños de Fuente */
@@ -609,6 +621,7 @@ impl LanServer {
       display: none !important;
     }
   </style>
+  <style id="customCssBlock"></style>
 </head>
 <body class="theme-transparent">
   <div id="stage" class="stage theme-transparent mode-lowerthird font-large" title="Doble clic o tecla F para pantalla completa">
@@ -632,6 +645,8 @@ impl LanServer {
       fontSize: params.get('fontSize') || 'large',
       uppercase: params.has('uppercase') ? params.get('uppercase') === 'true' : false,
       showNext: params.has('showNext') ? params.get('showNext') !== 'false' : true,
+      textShadow: params.has('textShadow') ? params.get('textShadow') === 'true' : false,
+      customCss: '',
     };
 
     let rawLrc = "";
@@ -648,6 +663,7 @@ impl LanServer {
     const prompterContainerEl = document.getElementById('prompterContainer');
     const prompterLinesEl = document.getElementById('prompterLines');
     const emptyNoteEl = document.getElementById('emptyNote');
+    const customCssBlockEl = document.getElementById('customCssBlock');
 
     function applyClasses() {
       document.body.className = 'theme-' + options.theme;
@@ -655,7 +671,16 @@ impl LanServer {
         ' mode-' + options.mode +
         ' font-' + options.fontSize +
         (options.uppercase ? ' is-uppercase' : '') +
-        (!options.showNext ? ' hide-next' : '');
+        (!options.showNext ? ' hide-next' : '') +
+        (options.textShadow ? ' has-shadow' : '');
+
+      if (customCssBlockEl) {
+        if (options.mode === 'fullscreen' && options.customCss) {
+          customCssBlockEl.textContent = options.customCss;
+        } else {
+          customCssBlockEl.textContent = '';
+        }
+      }
     }
     applyClasses();
 
@@ -771,6 +796,8 @@ impl LanServer {
         if (data.options.fontSize && !params.has('fontSize')) options.fontSize = data.options.fontSize;
         if (data.options.uppercase !== undefined && !params.has('uppercase')) options.uppercase = data.options.uppercase;
         if (data.options.showNext !== undefined && !params.has('showNext')) options.showNext = data.options.showNext;
+        if (data.options.textShadow !== undefined && !params.has('textShadow')) options.textShadow = !!data.options.textShadow;
+        if (data.options.customCss !== undefined) options.customCss = data.options.customCss || '';
         applyClasses();
       }
       if (data.rawLrc !== undefined && data.rawLrc !== rawLrc) {

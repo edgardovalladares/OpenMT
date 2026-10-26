@@ -144,10 +144,10 @@ class PadPlayer {
     if (manual) {
       this.autoKey = false;
     }
-    if (this.tonic === normalized && this.isPlaying) return;
+    const changed = this.tonic !== normalized;
     this.tonic = normalized;
 
-    if (this.isPlaying) {
+    if (this.isPlaying && changed) {
       this.crossfadeTo(this.soundType, this.tonic);
     }
     this.notify();
@@ -180,19 +180,35 @@ class PadPlayer {
     const nextUrl = this.getAudioUrl(soundType, tonic);
     const nextAudio = new Audio(nextUrl);
     nextAudio.loop = true;
-    nextAudio.volume = 0;
-
-    const playPromise = nextAudio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {});
-    }
+    nextAudio.preload = 'auto';
 
     const prevAudio = this.currentAudio;
     this.currentAudio = nextAudio;
 
-    const startVol = prevAudio ? prevAudio.volume : 0;
+    // Si no había pad sonando, comenzar directamente al volumen configurado
+    if (!prevAudio) {
+      nextAudio.volume = this.volume;
+      const playPromise = nextAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Pad play() blocked or error:', err);
+        });
+      }
+      return;
+    }
+
+    // Si ya había un pad sonando, realizar crossfade suave entre ambos
+    nextAudio.volume = 0;
+    const playPromise = nextAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Pad play() blocked or error:', err);
+      });
+    }
+
+    const startVol = prevAudio.volume;
     const targetVol = this.volume;
-    const steps = 30; // 30 pasos cada 50ms = 1.5s de transición suave
+    const steps = 25; // 25 pasos cada 40ms = 1s de transición fluida
     let step = 0;
 
     this.fadeInterval = setInterval(() => {
@@ -202,7 +218,7 @@ class PadPlayer {
       if (prevAudio) {
         prevAudio.volume = Math.max(0, startVol * (1 - progress));
       }
-      if (this.currentAudio) {
+      if (this.currentAudio === nextAudio) {
         this.currentAudio.volume = Math.min(1, targetVol * progress);
       }
 
@@ -216,7 +232,7 @@ class PadPlayer {
           prevAudio.src = '';
         }
       }
-    }, 50);
+    }, 40);
   }
 
   start() {

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Volume2,
   Play,
@@ -6,6 +7,7 @@ import {
   Sparkles,
   Sliders,
   Check,
+  X,
 } from 'lucide-react';
 import {
   padPlayer,
@@ -20,7 +22,11 @@ export function PadPanel() {
   const [isPlaying, setIsPlaying] = useState(padPlayer.running);
   const [config, setConfig] = useState(padPlayer.config);
   const [isOpen, setIsOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
+
   const popoverRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
   // Detección automática de la tonalidad actual de la canción en el DAW
   const refTrack = useDaw(selectRef);
@@ -49,17 +55,53 @@ export function PadPanel() {
     };
   }, []);
 
+  const updatePosition = useCallback(() => {
+    const anchor = buttonRef.current || settingsButtonRef.current;
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      const popoverWidth = 300;
+      const left = Math.max(10, Math.min(window.innerWidth - popoverWidth - 10, rect.left - 20));
+      setPopoverPos({
+        top: Math.round(rect.bottom + 6),
+        left: Math.round(left),
+      });
+    }
+  }, []);
+
+  const toggleOpen = () => {
+    if (!isOpen) {
+      updatePosition();
+    }
+    setIsOpen((prev) => !prev);
+  };
+
   // Cerrar popover al hacer clic fuera
   useEffect(() => {
     if (!isOpen) return;
+
     const handleOutsideClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+      const target = e.target as Node;
+      if (
+        (popoverRef.current && popoverRef.current.contains(target)) ||
+        (buttonRef.current && buttonRef.current.contains(target)) ||
+        (settingsButtonRef.current && settingsButtonRef.current.contains(target))
+      ) {
+        return;
       }
+      setIsOpen(false);
     };
+
+    const handleResize = () => updatePosition();
+
     window.addEventListener('mousedown', handleOutsideClick);
-    return () => window.removeEventListener('mousedown', handleOutsideClick);
-  }, [isOpen]);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+    return () => {
+      window.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [isOpen, updatePosition]);
 
   const activeKeyInfo = PAD_TONIC_NAMES[config.tonic] || { name: 'C', relativeMinor: 'Am' };
 
@@ -69,7 +111,7 @@ export function PadPanel() {
 
   const handleSelectTonic = (tonic: number) => {
     padPlayer.setTonic(tonic, true); // Manual selection
-    if (!isPlaying) {
+    if (!padPlayer.running) {
       padPlayer.start();
     }
   };
@@ -91,76 +133,113 @@ export function PadPanel() {
   };
 
   return (
-    <section className="panel panel--pad" aria-label="Pads Continuos Worship" style={{ position: 'relative' }}>
-      <span className="panel__label">PADS WORSHIP</span>
-      <div className="row" style={{ gap: 4 }}>
-        {/* Botón Play / Stop Pad */}
-        <button
-          type="button"
-          className={`btn ${isPlaying ? 'btn--accent' : ''}`}
-          onClick={handleToggle}
-          title={isPlaying ? 'Detener Pad continuo' : 'Reproducir Pad continuo en bucle infinito'}
-          aria-pressed={isPlaying}
-          style={{ minWidth: 28, padding: '2px 7px' }}
-        >
-          {isPlaying ? <Square size={12} fill="currentColor" /> : <Play size={12} />}
-        </button>
+    <>
+      <section className="panel panel--pad" aria-label="Pads Continuos Worship">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+          <span className="panel__label">PADS WORSHIP</span>
+          {isPlaying && (
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: 'var(--meter-ok)',
+                boxShadow: '0 0 6px var(--meter-ok)',
+              }}
+              title="Pad sonando en bucle continuo"
+            />
+          )}
+        </div>
 
-        {/* Readout de la Tonalidad del Pad */}
-        <button
-          type="button"
-          className={`btn btn--tiny ${isPlaying ? 'pad-badge--active' : ''}`}
-          onClick={() => setIsOpen(!isOpen)}
-          title="Abrir selector de tonalidades y tipos de Pad"
+        {/* Fila 1: Botón Play y Selector de Tono */}
+        <div className="row" style={{ gap: 4, alignItems: 'center' }}>
+          <button
+            type="button"
+            className={`btn ${isPlaying ? 'btn--accent' : ''}`}
+            onClick={handleToggle}
+            title={isPlaying ? 'Detener Pad continuo' : 'Reproducir Pad continuo en bucle infinito'}
+            aria-pressed={isPlaying}
+            style={{ minWidth: 28, height: 24, padding: '2px 7px' }}
+          >
+            {isPlaying ? <Square size={11} fill="currentColor" /> : <Play size={11} />}
+          </button>
+
+          <button
+            ref={buttonRef}
+            type="button"
+            className={`btn btn--tiny ${isPlaying ? 'pad-badge--active' : ''}`}
+            onClick={toggleOpen}
+            title="Abrir selector de tonalidades de Pad"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontWeight: 700,
+              height: 24,
+              padding: '2px 8px',
+              flex: 1,
+            }}
+          >
+            <Sparkles size={11} style={{ color: isPlaying ? 'var(--accent)' : 'var(--text-dim)' }} />
+            <span style={{ whiteSpace: 'nowrap' }}>
+              {activeKeyInfo.name} <small style={{ opacity: 0.7, fontWeight: 500 }}>({activeKeyInfo.relativeMinor})</small>
+            </span>
+          </button>
+        </div>
+
+        {/* Fila 2: Versión y Ajustes */}
+        <div className="row" style={{ gap: 4, alignItems: 'center', marginTop: 2 }}>
+          <button
+            type="button"
+            className="btn btn--tiny"
+            onClick={() => handleSoundTypeChange(config.soundType === 'essentials' ? 'omnisphere' : 'essentials')}
+            title="Cambiar entre sonido Essentials (Cálido) y Omnisphere (Etéreo)"
+            style={{ fontSize: 10, height: 22, padding: '1px 6px', textTransform: 'capitalize', flex: 1 }}
+          >
+            {config.soundType === 'essentials' ? 'Essentials' : 'Omnisphere'}
+          </button>
+
+          <button
+            ref={settingsButtonRef}
+            type="button"
+            className={`btn btn--tiny ${isOpen ? 'btn--accent' : ''}`}
+            onClick={toggleOpen}
+            title="Ajustes de volumen y detección automática de tono"
+            aria-label="Opciones del Pad"
+            style={{ minWidth: 24, height: 22, padding: '1px 5px' }}
+          >
+            <Sliders size={11} />
+          </button>
+        </div>
+      </section>
+
+      {/* Popover flotante con matriz de 12 tonalidades renderizado en Portal para evitar recortes */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="pad-popover"
+          ref={popoverRef}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            fontWeight: 700,
-            padding: '2px 8px',
+            position: 'fixed',
+            top: `${popoverPos.top}px`,
+            left: `${popoverPos.left}px`,
+            zIndex: 99999,
           }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <Sparkles size={11} style={{ color: isPlaying ? 'var(--accent)' : 'var(--text-dim)' }} />
-          <span>
-            {activeKeyInfo.name} <small style={{ opacity: 0.7, fontWeight: 500 }}>({activeKeyInfo.relativeMinor})</small>
-          </span>
-        </button>
-
-        {/* Selector rápido de versión */}
-        <button
-          type="button"
-          className="btn btn--tiny"
-          onClick={() => handleSoundTypeChange(config.soundType === 'essentials' ? 'omnisphere' : 'essentials')}
-          title="Cambiar entre Essentials y Omnisphere"
-          style={{ fontSize: 10, padding: '2px 6px', textTransform: 'capitalize' }}
-        >
-          {config.soundType === 'essentials' ? 'Essentials' : 'Omnisphere'}
-        </button>
-
-        {/* Botón de configuración desplegable */}
-        <button
-          type="button"
-          className={`btn btn--tiny ${isOpen ? 'btn--accent' : ''}`}
-          onClick={() => setIsOpen(!isOpen)}
-          title="Opciones avanzadas del Pad"
-          aria-label="Opciones del Pad"
-          style={{ minWidth: 24, padding: '2px 5px' }}
-        >
-          <Sliders size={12} />
-        </button>
-      </div>
-
-      {/* Popover desplegable con matriz de 12 tonalidades y controles */}
-      {isOpen && (
-        <div className="pad-popover" ref={popoverRef}>
           <div className="pad-popover__header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+              <Sparkles size={13} style={{ color: 'var(--accent)' }} />
               <strong>Pads Continuos Worship</strong>
             </div>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-              {isPlaying ? 'Reproduciendo en bucle' : 'En pausa'}
-            </span>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setIsOpen(false)}
+              aria-label="Cerrar selector de pads"
+              style={{ width: 20, height: 20 }}
+            >
+              <X size={12} />
+            </button>
           </div>
 
           {/* Selector de Versión de Pad */}
@@ -237,8 +316,9 @@ export function PadPanel() {
               </span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </section>
+    </>
   );
 }

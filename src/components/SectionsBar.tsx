@@ -28,8 +28,6 @@ interface ActiveDrag {
 
 export function SectionsBar({ duration }: { duration: number }) {
   const sections = useDaw((s) => s.sections);
-  const sectionsHeight = useDaw((s) => s.sectionsHeight);
-  const setSectionsHeight = useDaw((s) => s.setSectionsHeight);
   const activeSectionId = useDaw((s) => s.activeSectionId);
   const loopSectionId = useDaw((s) => s.loopSectionId);
   const queuedSectionId = useDaw((s) => s.queuedSectionId);
@@ -194,69 +192,35 @@ export function SectionsBar({ duration }: { duration: number }) {
     };
   }, [activeDrag, totalDur, sections, updateSection]);
 
-  // 2. Manejo de redimensionado interactivo de la altura de las secciones
-  const startHeightResize = (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const startY = e.clientY;
-    const initialH = sectionsHeight;
-
-    const onMove = (ev: PointerEvent) => {
-      const deltaY = ev.clientY - startY;
-      setSectionsHeight(initialH + deltaY);
-    };
-
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-  };
-
   return (
     <>
       {/* Columna 1: Encabezado sticky de la barra de secciones */}
-      <div className="grid__sections-head" style={{ height: `${sectionsHeight}px` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="grid__sections-title">Secciones</span>
-          <span className="grid__sections-h-badge" title="Altura editable de las secciones">
-            {sectionsHeight}px
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+      <div className="grid__sections-head">
+        <span className="grid__sections-title">Secciones</span>
+        <div className="grid__sections-actions">
           <button
             type="button"
             className="btn btn--tiny"
             onClick={openAddModal}
             title="Crear nueva sección musical"
           >
-            <Plus size={12} />
-            <span>Sección</span>
+            <Plus size={11} />
+            <span>Nueva</span>
           </button>
           <button
             type="button"
             className="btn btn--tiny"
             onClick={() => autoGenerateSections()}
-            title="Autodetectar secciones inteligentemente guiadas por Guía, Click y BPM"
+            title="Autodetectar secciones guiadas por Guía y Click"
           >
-            <Sparkles size={12} />
-            <span>Auto Guía/Click</span>
+            <Sparkles size={11} />
+            <span>Auto</span>
           </button>
         </div>
-
-        {/* Tirador inferior para cambiar altura de secciones */}
-        <div
-          className="sections-height-handle"
-          onPointerDown={startHeightResize}
-          title="Arrastra verticalmente para cambiar la altura de todas las secciones"
-        />
       </div>
 
       {/* Columna 2: Carril interactivo de secciones en el timeline */}
-      <div className="sections-lane" ref={laneRef} style={{ height: `${sectionsHeight}px` }}>
+      <div className="sections-lane" ref={laneRef}>
         {sections.length === 0 ? (
           <div className="sections-lane__empty">
             <span>No hay secciones definidas aún.</span>
@@ -327,9 +291,11 @@ export function SectionsBar({ duration }: { duration: number }) {
 
                 <div className="section-block__left">
                   <span className="section-block__tag">{sec.name}</span>
-                  <span className="section-block__time tabular-nums">
-                    {formatTime(currentStart)} - {formatTime(currentEnd)}
-                  </span>
+                  {isDraggingThis && (
+                    <span className="section-block__time tabular-nums">
+                      {formatTime(currentStart)} - {formatTime(currentEnd)}
+                    </span>
+                  )}
 
                   {isDraggingThis && (
                     <span className="section-block__badge section-block__badge--drag">
@@ -397,13 +363,6 @@ export function SectionsBar({ duration }: { duration: number }) {
             );
           })
         )}
-
-        {/* Tirador inferior para cambiar altura de secciones */}
-        <div
-          className="sections-height-handle"
-          onPointerDown={startHeightResize}
-          title="Arrastra verticalmente para cambiar la altura de todas las secciones"
-        />
       </div>
 
       {/* Modal para Crear o Editar Sección */}

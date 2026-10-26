@@ -54,6 +54,13 @@ export function LyricsView() {
     if (params.has('showNext')) return params.get('showNext') !== 'false';
     return initialState.options?.showNext ?? true;
   });
+  const [textShadow, setTextShadow] = useState<boolean>(() => {
+    if (params.has('textShadow')) return params.get('textShadow') === 'true';
+    return initialState.options?.textShadow ?? false;
+  });
+  const [customCss, setCustomCss] = useState<string>(() => {
+    return initialState.options?.customCss ?? '';
+  });
 
   const prompterContainerRef = useRef<HTMLDivElement>(null);
 
@@ -142,6 +149,8 @@ export function LyricsView() {
       if (msg.options.fontSize) setFontSize(msg.options.fontSize);
       if (msg.options.uppercase !== undefined) setUppercase(msg.options.uppercase);
       if (msg.options.showNext !== undefined) setShowNext(msg.options.showNext);
+      if (msg.options.textShadow !== undefined) setTextShadow(msg.options.textShadow);
+      if (msg.options.customCss !== undefined) setCustomCss(msg.options.customCss);
     }
   };
 
@@ -257,10 +266,13 @@ export function LyricsView() {
 
   return (
     <main
-      className={`lyrics-stage lyrics-stage--clean lyrics-stage--${theme} lyrics-stage--${mode} lyrics-stage--font-${fontSize}`}
+      className={`lyrics-stage lyrics-stage--clean lyrics-stage--${theme} lyrics-stage--${mode} lyrics-stage--font-${fontSize} ${textShadow ? 'lyrics-stage--has-shadow' : ''}`}
       onDoubleClick={handleDoubleClick}
       title="Doble clic para pantalla completa (F)"
     >
+      {mode === 'fullscreen' && customCss ? (
+        <style dangerouslySetInnerHTML={{ __html: customCss }} />
+      ) : null}
       {/* Salida limpia sin barras ni botones estorbosos */}
       {lines.length === 0 ? (
         theme !== 'transparent' ? (
